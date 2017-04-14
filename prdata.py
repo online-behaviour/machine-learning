@@ -3,11 +3,13 @@
 # usage: eval < file
 # notes: 
 # - expects line to end with: gold tag, guessed tag and score
-# - assumes that there are two tags: OTHER and 1
+# - assumes that there are two tags: O and 1
 # 20170413 erikt(at)xs4all.nl
 
 import re
 import sys
+
+OTHER = "O"
 
 correct = {} # dictionary with correct counts
 gold = {}    # dictionary with gold tag counts
@@ -26,8 +28,8 @@ for line in sys.stdin:
     guessedTag = tokens.pop(-1)
     goldTag = tokens.pop(-1)
     # assume that there are two tags only
-    if guessedTag != "OTHER": guessedTag = "1"
-    if goldTag != "OTHER": goldTag = "1"
+    if guessedTag != OTHER: guessedTag = "1"
+    if goldTag != OTHER: goldTag = "1"
     # check if the guess is correct
     if guessedTag == goldTag:
         if not score in correct: correct[score] = {}
@@ -51,10 +53,10 @@ for threshold in sorted(gold.iterkeys()):
     for tag in sorted(gold.iterkeys()):
         if not tag in gold: gold[tag] = {}
         if not "1" in gold[tag]: gold[tag]["1"] = 0
-        if not "OTHER" in gold[tag]: gold[tag]["OTHER"] = 0
+        if not OTHER in gold[tag]: gold[tag][OTHER] = 0
         if (float(tag) >= float(threshold)):
             # guess 1
-            newGuessed += gold[tag]["OTHER"]+gold[tag]["1"]
+            newGuessed += gold[tag][OTHER]+gold[tag]["1"]
             newCorrect += gold[tag]["1"]
         precision = 0.0
         if newGuessed > 0: precision = float(newCorrect)/float(newGuessed)
