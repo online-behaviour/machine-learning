@@ -52,6 +52,6 @@ for tag in sorted(gold.iterkeys()):
     if precision > 0.0 and recall > 0.0: 
         f1 = 2*precision*recall/(precision+recall)
     else: f1 = 0.0
-    print "%5.1f %5.1f %5.1f %s" % (100*precision,100*recall,100*f1,tag)
+    print "%5d %5.1f %5.1f %5.1f %s" % (gold[tag],100*precision,100*recall,100*f1,tag)
 
 sys.exit()
