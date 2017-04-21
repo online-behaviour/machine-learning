@@ -9,6 +9,7 @@
 
 import csv
 import getopt
+import nltk
 import numpy
 import re
 import sys
@@ -33,10 +34,11 @@ OTHER = "O" # other value in binary experiment
 if len(sys.argv) < 1: sys.exit("usage: "+COMMAND+" train-file [unseen-file]\n")
 trainFile = sys.argv.pop(0)
 targetClasses = ["1","2","3","4","5","6","7","8","9","10","11","12","13"]
-# 
+# file with unseen data that needs to be classified 
 unseenFile = ""
 if len(sys.argv) > 0:
     unseenFile = sys.argv.pop(0)
+# file with additional training data
 trainFile2 = ""
 if len(sys.argv) > 0:
     trainFile2 = sys.argv.pop(0)
@@ -63,15 +65,11 @@ def readData(file,targetClass,tweetColumn,classColumn,hasHeading):
 # tokenize the tweet text
 def tokenize(text,minTrain,maxTrain,minTrain2):
     tokenized = []   # list of lists of tokens per tweet
-    tokenIds = {}    # dictionary of ids of tokens in tokenList
     tokenCounts = {} # dictionary with per-token counts in training data
     tokenList = []   # list of all tokens
     patternEmail = re.compile("\S+@\S+")
     patternUserref = re.compile("@\S+")
     patternUrl = re.compile("http\S+")
-    patternCharacter = re.compile("(.)")
-    patternPunctuation = re.compile("\W")
-    patternSpace = re.compile("\s")
     for i in range(0,len(text)):
         # print "TOKENIZE: %s" % (text[i])
         # convert tweet text to lower case 
@@ -80,60 +78,17 @@ def tokenize(text,minTrain,maxTrain,minTrain2):
         text[i] = patternEmail.sub("MAIL",text[i])
         text[i] = patternUserref.sub("USER",text[i])
         text[i] = patternUrl.sub("HTTP",text[i])
-        # split in characters
-        tweetChars = list(text[i])
-        # print "TOKENIZE: %s" % (str(tweetChars))
-        # build tokens from characters
-        tweetTokens = []
-        tweetTokenIndex = -1
-        insideToken = False
-        # examine each character in the tweet
-        for i in range(0,len(tweetChars)):
-           # combine utf characters: HERE
-           #if ord(tweetChars[i]) >= 128 and i+1 < len(tweetChars) and ord(tweetChars[i+1]) >= 128:
-           #   tweetChars[i] += tweetChars[i+1]
-           #   tweetChars.pop(i+1)
-           #   i -= 1
-           # white space signals the end of a token
-           if patternSpace.search(tweetChars[i]):
-               insideToken = False
-           # punctuation characters should be separate unextendable tokens
-           elif patternPunctuation.search(tweetChars[i]):
-               tweetTokenIndex += 1
-               tweetTokens.append(tweetChars[i])
-               insideToken = False
-           # characters [a-z0-9] should be appended to the current token
-           elif insideToken:
-               tweetTokens[tweetTokenIndex] = tweetTokens[tweetTokenIndex]+tweetChars[i]
-           # if we are not in a token, start a new one for this [a-z0-9]
-           else:
-               tweetTokenIndex += 1
-               tweetTokens.append(tweetChars[i])
-               insideToken = True
-        # add the tokens of this tweet to a global token list
-        for t in tweetTokens:
-            # if the token is unknown
-            if not t in tokenIds:
-                # add it to the token list with a unique id
-                tokenIds[t] = len(tokenList)
-                tokenList.append(t)
-                # only count tokens in training data
-                if minTrain <= i and i < maxTrain or \
-                   (minTrain2 != NONE and i >= minTrain2):
-                    tokenCounts[t] = 1
-                else: tokenCounts[t] = 0
-            # only count tokens in training data
-            elif minTrain <= i and i < maxTrain or \
-                (minTrain2 != NONE and i >= minTrain2):
-                tokenCounts[t] += 1
-        # add the tokens of this tweet to a token list
-        tokenized.append(tweetTokens)
+        tokenized.append(nltk.word_tokenize(unicode(text[i],"utf8")))
+        for token in tokenized[-1]:
+            if token in tokenCounts: tokenCounts[token] += 1
+            else: 
+               tokenCounts[token] = 1
+               tokenList.append(token)
     return({"tokenized":tokenized,"tokenList":tokenList,"tokenCounts":tokenCounts})
 
 # select tokens as features for vectors
 def makeVectors(tokenizeResults,minTrain,maxTrain,minTest,maxTest,minUnseen,minTrain2):
-    # in order to avoid memory problems, we only select the
-    # most frequent tokens as features
+    # select the most frequent tokens as features
     selectedTokens = []
     selectedIds = {}
     for i in range(0,len(tokenizeResults["tokenList"])):
@@ -147,20 +102,19 @@ def makeVectors(tokenizeResults,minTrain,maxTrain,minTest,maxTest,minUnseen,minT
     for i in range(minTrain,maxTrain):
         for token in tokenizeResults["tokenized"][i]:
             if token in selectedTokens:
-                data.append(1)
+                data.append(1) # count for this token: use 1
                 rows.append(i-minTrain)
                 columns.append(selectedIds[token])
+    # if there is an additional second training data set: add it
     trainSize = maxTrain-minTrain
     if minTrain2 != NONE:
         trainSize += len(tokenizeResults["tokenized"])-minTrain2
         for i in range(minTrain2,len(tokenizeResults["tokenized"])):
-            # print "ADDING %s" % (str(tokenizeResults["tokenized"][i]).encode("utf-8"))
             for token in tokenizeResults["tokenized"][i]:
                 if token in selectedTokens:
-                    data.append(1)
-                    rows.append(i-minTrain2)
+                    data.append(1) # count for this token: use 1
+                    rows.append(i-minTrain2+maxTrain-minTrain)
                     columns.append(selectedIds[token])
-    sys.exit("STOPPED")
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html
     train = csr_matrix((data,(rows,columns)),shape=(trainSize,len(selectedTokens)))
     # make a sparse data matrix for the test data
@@ -170,7 +124,7 @@ def makeVectors(tokenizeResults,minTrain,maxTrain,minTest,maxTest,minUnseen,minT
     for i in range(minTest,maxTest):
         for token in tokenizeResults["tokenized"][i]:
             if token in selectedTokens:
-                data.append(1)
+                data.append(1) # count for this token: use 1
                 rows.append(i-minTest)
                 columns.append(selectedIds[token])
     test = csr_matrix((data,(rows,columns)),shape=(maxTest-minTest,len(selectedTokens)))
@@ -184,7 +138,7 @@ def makeVectors(tokenizeResults,minTrain,maxTrain,minTest,maxTest,minUnseen,minT
         for i in range(minUnseen,len(tokenizeResults["tokenized"])):
             for token in tokenizeResults["tokenized"][i]:
                 if token in selectedTokens:
-                    data.append(1)
+                    data.append(1) # count for this token: use 1
                     rows.append(i-minUnseen)
                     columns.append(selectedIds[token])
         unseen = csr_matrix((data,(rows,columns)),shape=(len(tokenizeResults["tokenized"])-minUnseen,len(selectedTokens)))
