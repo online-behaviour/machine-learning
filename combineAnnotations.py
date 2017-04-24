@@ -61,7 +61,7 @@ for file in files:
 # show results
 for thisId in sorted(guessedTags.iterkeys()):
     # sanity checks: guessed-id should be in goldTags and confidenceValues
-    if not thisId in goldTags: sys.exit(COMMAND+": no gold tag for id "+thisId+"!\n")
+    if not thisId in goldTags: goldTags[thisId] = NONE
     if not thisId in confidenceValues: sys.exit(COMMAND+": no confidence value for id "+thisId+"!\n")
     # show results
     print "# %s %s %s %0.3f" % (thisId,goldTags[thisId],guessedTags[thisId],confidenceValues[thisId])

@@ -197,6 +197,7 @@ for targetClass in targetClasses:
     guesses = bnbExperiment.predict(makeVectorsResults["test"])
     confidences = bnbExperiment.predict_proba(makeVectorsResults["test"])
     guessesTrain = bnbExperiment.predict(makeVectorsResults["train"])
+    # confidencesTrain = bnbExperiment.predict_proba(makeVectorsResults["train"])
     # process results
     outFile = open(COMMAND+".out."+targetClass,"w")
     correct = 0
@@ -216,6 +217,7 @@ for targetClass in targetClasses:
     guessTotalTrain = 0
     goldTotalTrain = 0
     for i in range(0,maxTrain-minTrain):
+        # print >>outFile, "# %d: %s %s %0.3f" % (i+minTrain,readDataResults["classes"][i+minTrain],guessesTrain[i],confidencesTrain[i][0])
         if guessesTrain[i] == targetClass:
             guessTotalTrain += 1
             if guessesTrain[i] == readDataResults["classes"][i+minTrain]: correctTrain += 1
