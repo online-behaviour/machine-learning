@@ -24,6 +24,7 @@ files.pop(0)
 goldTags = {}
 guessedTags = {}
 confidenceValues = {}
+history = {}
 # process files
 for file in files:
     try:
@@ -32,7 +33,7 @@ for file in files:
         sys.stderr.write(COMMAND+": cannot read file "+file+"!\n")
     # determine gold tag based on fila name
     fields = file.split(".")
-    goldTag = fields[-1]
+    fileNameGoldTag = fields[-1]
     patternHash = re.compile("^#")
     # read each line of the fil
     for line in f:
@@ -51,18 +52,39 @@ for file in files:
               if gold != OTHER: 
                   goldTags[thisId] = gold
                   # sanity check
-                  if gold != goldTag and gold != NONE: 
+                  if gold != fileNameGoldTag and gold != NONE: 
                       sys.exit(COMMAND+": gold tag does not match file name! ("+gold+","+file+")\n")
-              # if the guessed tag is not blank, store the most confident prediction
-              if not thisId in guessedTags or confidence > confidenceValues[thisId]:
-                  guessedTags[thisId] = goldTag
-                  confidenceValues[thisId] = confidence
+              # store the most confident prediction with confidence > 0
+              if confidence > 0:
+                 # ignore the guess: it is only set when confidence > 0.5
+                 # store guess in history
+                 if thisId in history: history[thisId] += " "+fileNameGoldTag+":"+str(confidence)
+                 else: history[thisId] = fileNameGoldTag+":"+str(confidence)
+                 # keep the tag with the highest confidence
+                 if not thisId in guessedTags or confidence > confidenceValues[thisId]:
+                     guessedTags[thisId] = fileNameGoldTag
+                     confidenceValues[thisId] = confidence
+
+# determine default guess: most frequently guessed tag
+counts = {}
+for thisId in guessedTags:
+    guess = guessedTags[thisId]
+    if guess in counts: counts[guess] += 1
+    else: counts[guess] = 1
+bestGuess = ""
+bestCount = -1
+for guess in counts:
+    if counts[guess] > bestCount:
+        bestGuess = guess
+        bestCount = counts[guess]
 
 # show results
-for thisId in sorted(guessedTags.iterkeys()):
+for thisId in sorted(goldTags.iterkeys()):
     # sanity checks: guessed-id should be in goldTags and confidenceValues
+    if not thisId in history: history[thisId] = ""
     if not thisId in goldTags: goldTags[thisId] = NONE
-    if not thisId in confidenceValues: sys.exit(COMMAND+": no confidence value for id "+thisId+"!\n")
+    if not thisId in guessedTags: guessedTags[thisId] = bestGuess
+    if not thisId in confidenceValues: confidenceValues[thisId] = 0.0
     # show results
-    print "# %s %s %s %0.3f" % (thisId,goldTags[thisId],guessedTags[thisId],confidenceValues[thisId])
+    print "# %s %s %s %0.3f %s" % (thisId,goldTags[thisId],guessedTags[thisId],confidenceValues[thisId],history[thisId])
 
