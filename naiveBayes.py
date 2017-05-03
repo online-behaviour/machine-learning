@@ -123,17 +123,24 @@ def makeVectors(tokenizedText,selectedTokens):
     matrix = csr_matrix((data,(rows,columns)),shape=(len(tokenizedText),len(selectedTokens)))
     return(matrix) 
 
-def main():
-    # process command line arguments
-    # get the name of the data file from the command line
-    if len(sys.argv) < 2:
-        sys.exit("usage: "+COMMAND+" train-file test-file [train-file-2]\n")
-    trainFile = sys.argv.pop(0)
-    testFile = sys.argv.pop(0)
-    # optional file with additional training data
+def main(argv):
+    # train and test files
+    testFile = ""
+    trainFile = ""
     trainFile2 = ""
-    if len(sys.argv) > 0:
-        trainFile2 = sys.argv.pop(0)
+    # offset counter for line numbers in output
+    offset = 0
+    # usage error message
+    usage = "usage: "+COMMAND+" -T train-file -t test-file [-e extra-train-file] [-o offset]"
+    # process command line arguments
+    try: options = getopt.getopt(argv,"T:t:e:o:",[])
+    except: sys.exit(usage)
+    for option in options[0]:
+        if option[0] == "-T": trainFile = option[1]
+        elif option[0] == "-t": testFile = option[1]
+        elif option[0] == "-e": trainFile2 = option[1]
+        elif option[0] == "-o": offset = int(option[1])
+    if testFile == "" or trainFile == "": sys.exit(usage)
     # get target classes from training data file
     targetClasses = getTargetClasses(trainFile,TRAINCOLUMNCLASS,False)
     # perform a binary experiment (1 vs rest) for each target class
@@ -168,8 +175,8 @@ def main():
         goldTotal = 0
         # show result per data line
         for i in range(0,len(testTokenized)):
-            print >>outFile, "# %d: %s %s %0.3f" % (i,readDataTest["classes"][i],targetClass,confidences[i][0])
+            print >>outFile, "# %d: %s %s %0.3f" % (i+offset,readDataTest["classes"][i],targetClass,confidences[i][0])
         outFile.close()
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv))
