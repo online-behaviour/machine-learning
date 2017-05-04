@@ -1,7 +1,7 @@
 #!/usr/bin/python -W all
 """
     naiveBayes.py: run naive bayes experiment
-    usage: naiveBayes.py train-file test-file [train-file-2]
+    usage: naiveBayes.py -T train-file -t test-file [-e train-file-2] [-o offsett]
     note: input files are expected to contain csv (dutch-2012.csv, getTweetsText.out.1.text)
     20170410 erikt(at)xs4all.nl
 """
