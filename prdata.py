@@ -45,12 +45,13 @@ for line in sys.stdin:
     else: guessed[score][guessedTag] = 1
     # increase gold counter when the gold tag is 1
     if goldTag == "1": goldTotal += 1
+
 # show results
-for threshold in sorted(gold.iterkeys()):
+for threshold in sorted(gold.iterkeys(),key=float):
     # compute new guesses based on the threshold value
     newCorrect = 0
     newGuessed = 0
-    for tag in sorted(gold.iterkeys()):
+    for tag in gold:
         if not tag in gold: gold[tag] = {}
         if not "1" in gold[tag]: gold[tag]["1"] = 0
         if not OTHER in gold[tag]: gold[tag][OTHER] = 0
@@ -58,13 +59,13 @@ for threshold in sorted(gold.iterkeys()):
             # guess 1
             newGuessed += gold[tag][OTHER]+gold[tag]["1"]
             newCorrect += gold[tag]["1"]
-        precision = 0.0
-        if newGuessed > 0: precision = float(newCorrect)/float(newGuessed)
-        recall = 0.0
-        if goldTotal > 0: recall = float(newCorrect)/float(goldTotal)
-        f1 = 0.0
-        if precision > 0.0 and recall > 0.0: 
-            f1 = 2*precision*recall/(precision+recall)
+    precision = 0.0
+    if newGuessed > 0: precision = float(newCorrect)/float(newGuessed)
+    recall = 0.0
+    if goldTotal > 0: recall = float(newCorrect)/float(goldTotal)
+    f1 = 0.0
+    if precision > 0.0 and recall > 0.0: 
+        f1 = 2*precision*recall/(precision+recall)
     print "%s %0.1f %0.1f %0.1f" % (threshold,100*precision,100*recall,100*f1)
 
 sys.exit()

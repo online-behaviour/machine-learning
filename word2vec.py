@@ -21,7 +21,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn import svm
 
 COMMAND = "word2vec.py"
-MAXVECTOR = 10
+MAXVECTOR = 200
 TWEETCOLUMN = 4
 CLASSCOLUMN = 9
 HASHEADING = False
@@ -132,7 +132,7 @@ else:
     saveMatrix(makeVectorsResultsTrain,trainFile+".wordvec")
 
 # run naive bayes experiments
-for targetClass in targetClasses:
+for targetClass in ["4","9","13"]: # targetClasses:
     # read the training and test file again to get the right class distribution for this target class
     readDataResultsTrain = naiveBayes.readData(trainFile,targetClass,TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
     readDataResultsTest = naiveBayes.readData(testFile,targetClass,TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
@@ -145,13 +145,14 @@ for targetClass in targetClasses:
     # test
     #confidences = bnbExperiment.predict_proba(makeVectorsResultsTest)
     # perform svm experiment
-    clf = svm.SVC()
+    clf = svm.SVC(decision_function_shape='ovo')
     binTrainClasses = makeBinary(readDataResultsTrain["classes"])
     clf.fit(makeVectorsResultsTrain,binTrainClasses)
     outFile = open(testFile+".out."+targetClass,"w")
     for i in range(0,len(makeVectorsResultsTest)):
-        result = naiveBayes.OTHER
-        if (1 == clf.predict([makeVectorsResultsTest[i]])[0]): result = targetClass
-        print >>outFile, "# %d: %s %s" % (i,readDataResultsTest["classes"][i],result)
+        # result = naiveBayes.OTHER
+        # if (1 == clf.predict([makeVectorsResultsTest[i]])[0]): result = targetClass
+        score = clf.decision_function([makeVectorsResultsTest[i]])[0]
+        print >>outFile, "# %d: %s %0.3f" % (i,readDataResultsTest["classes"][i],score)
     outFile.close()
 

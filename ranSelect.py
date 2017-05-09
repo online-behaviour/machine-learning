@@ -18,7 +18,9 @@ COMMAND = sys.argv.pop(0)
 cgitb.enable()
 DATADIR = "/home/cloud/projects/online-behaviour/machine-learning"
 DATAFILE = "dutch-2012.train.csv"
+ANNOFILE = "ANNOTATIONS"
 IDCOLUMN = 0
+USERCOLUMN = 2
 TWEETCOLUMN = 4
 RETWEETCOLUMN = 5
 CLASSCOLUMN = 9
@@ -29,9 +31,10 @@ correct = 0
 wrong = 0
 
 # read the data from training or test file
-def readData(idColumn,tweetColumn,replyColumn,classColumn,fileHasHeading):
+def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHeading):
     ids = [] # list with tweet ids
     text = [] # list with tweet texts
+    users = [] # list with users
     replies = [] # list with ids of replied tweets
     classes = [] # list with tweet classes
     id2index = {} # dictionary linking tweet ids to indexes
@@ -45,6 +48,8 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,fileHasHeading):
             if lineNbr == 1 and fileHasHeading: continue
             # add tweet text to list
             text.append(row[tweetColumn])
+            # add tweet text to list
+            users.append(row[userColumn])
             # add tweet class to list
             classes.append(row[classColumn])
             # add reply id to list (if any)
@@ -55,33 +60,41 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,fileHasHeading):
             ids.append(row[idColumn])
         csvfile.close()
     # return results
-    return({"text":text, "classes":classes, "ids":ids, "replies":replies, "id2index":id2index})
+    return({"text":text, "classes":classes, "ids":ids, "replies":replies, "users":users, "id2index":id2index})
 
 # cgi output initialization line
 print "Content-Type: text/html\n\n<html><head><title>TITLE</title><meta charset=\"UTF-8\"></head><body>"
 
 # read the data
-readDataResults = readData(IDCOLUMN,TWEETCOLUMN,RETWEETCOLUMN,CLASSCOLUMN,HASHEADING)
+readDataResults = readData(IDCOLUMN,TWEETCOLUMN,RETWEETCOLUMN,CLASSCOLUMN,USERCOLUMN,HASHEADING)
 
 # process the cgi data if any
 form = cgi.FieldStorage()
 if "id" in form:
     goldClass = readDataResults["classes"][readDataResults["id2index"][form["id"].value]]
-    predictedClass = form["class"].value
+    annotatedClass = form["class"].value
     tweet = readDataResults["text"][readDataResults["id2index"][form["id"].value]]
     correct = int(form["correct"].value)
     wrong = int(form["wrong"].value)
-    if predictedClass == goldClass: 
+    user = form["user"].value
+    thisId = form["id"].value
+    if annotatedClass == goldClass: 
         print "<font color=\"green\">"
         correct += 1
     else:
         print "<font color=\"red\">"
         wrong += 1
-    print "Antwoord: %s; Correct: %s; Tweet: %s %s" % (predictedClass,goldClass,form["id"].value,tweet)
+    contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+user+"/status/"+thisId+"\">context</a>"
+    print "Antwoord: %s; Correct: %s; Tweet: %s %s %s" % (annotatedClass,goldClass,thisId,tweet,contextLink)
     print "</font>\n"
     if correct+wrong > 0:
         print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
     print "<hr>"
+    # write annotation to logfile
+    try: outFile = open(DATADIR+"/"+ANNOFILE,"a")
+    except: sys.exit(COMMAND+": cannot write logfile "+DATADIR+"/"+ANNOFILE)
+    print >>outFile,"%s %s %s" % (thisId,goldClass,annotatedClass)
+    outFile.close()
 
 index = int(float(len(readDataResults["text"]))*random.random())
 
@@ -100,11 +113,13 @@ if len(replyTexts) > 0:
         for j in range(i,len(replyTexts)): print "&nbsp;&nbsp;&nbsp;"
         print replyTexts[i]
     print "</div>"
+contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+readDataResults["users"][index]+"/status/"+readDataResults["ids"][index]+"\">context</a>"
 # show tweet
-print "%s" % (readDataResults["text"][index])
+print "%s %s" % (readDataResults["text"][index],contextLink)
 
 print "<form>"
 print "<input type=\"hidden\" name=\"id\" value=\"%s\">" % (readDataResults["ids"][index])
+print "<input type=\"hidden\" name=\"user\" value=\"%s\">" % (readDataResults["users"][index])
 print "<input type=\"hidden\" name=\"correct\" value=\"%s\">" % (correct)
 print "<input type=\"hidden\" name=\"wrong\" value=\"%s\">" % (wrong)
 for i in range(0,len(CLASSES)):

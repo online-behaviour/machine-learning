@@ -28,15 +28,19 @@ history = {}
 # process files
 for file in files:
     try:
-        f = open(file,"r") # try to open the current input file
+        inFile = open(file,"r") # try to open the current input file
     except:
         sys.stderr.write(COMMAND+": cannot read file "+file+"!\n")
     # determine gold tag based on fila name
     fields = file.split(".")
     fileNameGoldTag = fields[-1]
     patternHash = re.compile("^#")
+    # confidence score data, necessary for normalization
+    confidences = {}
+    confidenceMax = -1000
+    confidenceMin = 1000
     # read each line of the fil
-    for line in f:
+    for line in inFile:
         # only process line that start with a hash sign
         if patternHash.match(line):
            # split the line in fields based on white space separators
@@ -54,16 +58,21 @@ for file in files:
                   # sanity check
                   if gold != fileNameGoldTag and gold != NONE: 
                       sys.exit(COMMAND+": gold tag does not match file name! ("+gold+","+file+")\n")
-              # store the most confident prediction with confidence > 0
-              if confidence > 0:
-                 # ignore the guess: it is only set when confidence > 0.5
-                 # store guess in history
-                 if thisId in history: history[thisId] += " "+fileNameGoldTag+":"+str(confidence)
-                 else: history[thisId] = fileNameGoldTag+":"+str(confidence)
-                 # keep the tag with the highest confidence
-                 if not thisId in guessedTags or confidence > confidenceValues[thisId]:
-                     guessedTags[thisId] = fileNameGoldTag
-                     confidenceValues[thisId] = confidence
+              confidences[thisId] = confidence
+              if confidence > confidenceMax: confidenceMax = confidence
+              if confidence < confidenceMin: confidenceMin = confidence
+    # normalize confidences
+    for thisId in confidences:
+        # skip normalization
+        # confidences[thisId] = (confidences[thisId]-confidenceMin)/(confidenceMax-confidenceMin)
+        # store the most confident prediction (earlier only if > 0)
+        # ignore the guess: it is only set when confidence > 0.5
+        if thisId in history: history[thisId] += " "+fileNameGoldTag+":"+str(confidences[thisId])
+        else: history[thisId] = fileNameGoldTag+":"+str(confidences[thisId])
+        # keep the tag with the highest confidence
+        if not thisId in guessedTags or confidences[thisId] > confidenceValues[thisId]:
+            guessedTags[thisId] = fileNameGoldTag
+            confidenceValues[thisId] = confidences[thisId]
 
 # determine default guess: most frequently guessed tag
 counts = {}
