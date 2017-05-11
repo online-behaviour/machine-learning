@@ -17,7 +17,7 @@ COMMAND = sys.argv.pop(0)
 #cgitb.enable(display=0, logdir="/tmp/"+COMMAND)
 cgitb.enable()
 DATADIR = "/home/cloud/projects/online-behaviour/machine-learning"
-DATAFILE = "dutch-2012.train.csv"
+DATAFILE = "dutch-2012.csv"
 ANNOFILE = "ANNOTATIONS"
 IDCOLUMN = 0
 USERCOLUMN = 2
@@ -29,6 +29,19 @@ CLASSES = ["Campaign Trail","Campaign Promotion","Campaign Action","Call to Vote
 
 correct = 0
 wrong = 0
+processed = {}
+annotate8 = True
+
+# read annotations file
+def readAnnotations(fileName):
+    global processed
+    try: inFile = open(fileName,"r")
+    except: sys.exit(COMMAND+": cannot read file "+fileName)
+    for line in inFile:
+        line = line.rstrip()
+        fields = line.split()
+        if len(line) < 3: sys.exit(COMMAND+": unexpected line in file "+fileName+": "+line)
+        processed[fields[0]] = True
 
 # read the data from training or test file
 def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHeading):
@@ -46,6 +59,8 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
             lineNbr += 1
             # ignore first line if it is a heading
             if lineNbr == 1 and fileHasHeading: continue
+            thisId = row[idColumn]
+            thisClass = row[classColumn]
             # add tweet text to list
             text.append(row[tweetColumn])
             # add tweet text to list
@@ -62,11 +77,22 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
     # return results
     return({"text":text, "classes":classes, "ids":ids, "replies":replies, "users":users, "id2index":id2index})
 
+def selectTweet():
+   global readDataResults
+   index = int(float(len(readDataResults["text"]))*random.random())
+   while annotate8 and \
+       (readDataResults["classes"][index] != "8" or readDataResults["ids"][index] in processed.keys()):
+       index = int(float(len(readDataResults["text"]))*random.random())
+   return(index)
+
 # cgi output initialization line
-print "Content-Type: text/html\n\n<html><head><title>TITLE</title><meta charset=\"UTF-8\"></head><body>"
+print "Content-Type: text/html\n\n<html><head><title>annotate</title><meta charset=\"UTF-8\"></head><body>"
 
 # read the data
 readDataResults = readData(IDCOLUMN,TWEETCOLUMN,RETWEETCOLUMN,CLASSCOLUMN,USERCOLUMN,HASHEADING)
+
+# read the known annotations
+readAnnotations(DATADIR+"/"+ANNOFILE)
 
 # process the cgi data if any
 form = cgi.FieldStorage()
@@ -78,12 +104,15 @@ if "id" in form:
     wrong = int(form["wrong"].value)
     user = form["user"].value
     thisId = form["id"].value
+    if "ANNOTATE8" in form.keys(): annotate8 = True
+    else: annotate8 = False
     if annotatedClass == goldClass: 
         print "<font color=\"green\">"
         correct += 1
     else:
         print "<font color=\"red\">"
         wrong += 1
+    processed[thisId] = True
     contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+user+"/status/"+thisId+"\">context</a>"
     print "Antwoord: %s; Correct: %s; Tweet: %s %s %s" % (annotatedClass,goldClass,thisId,tweet,contextLink)
     print "</font>\n"
@@ -96,7 +125,10 @@ if "id" in form:
     print >>outFile,"%s %s %s" % (thisId,goldClass,annotatedClass)
     outFile.close()
 
-index = int(float(len(readDataResults["text"]))*random.random())
+index = selectTweet()
+if readDataResults["ids"][index] in processed.keys():
+    print "duplicate id: %s" % (index)
+    sys.exit()
 
 # check if the current tweet is a reply 
 replyId = readDataResults["replies"][index]
@@ -115,6 +147,7 @@ if len(replyTexts) > 0:
     print "</div>"
 contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+readDataResults["users"][index]+"/status/"+readDataResults["ids"][index]+"\">context</a>"
 # show tweet
+if annotate8: sys.stdout.write(str(1+len(processed))+": ")
 print "%s %s" % (readDataResults["text"][index],contextLink)
 
 print "<form>"
@@ -122,8 +155,9 @@ print "<input type=\"hidden\" name=\"id\" value=\"%s\">" % (readDataResults["ids
 print "<input type=\"hidden\" name=\"user\" value=\"%s\">" % (readDataResults["users"][index])
 print "<input type=\"hidden\" name=\"correct\" value=\"%s\">" % (correct)
 print "<input type=\"hidden\" name=\"wrong\" value=\"%s\">" % (wrong)
+if annotate8: print "<input type=\"hidden\" name=\"ANNOTATE8\" value=\"1\">"
 for i in range(0,len(CLASSES)):
-    print "<br><input name=\"class\" type=\"submit\" value=\"%d\" style=\"width:70px;\"> %s" % (i+1,CLASSES[i])
+    print "<br><br><input name=\"class\" type=\"submit\" value=\"%d\" style=\"width:100px;\"> %s" % (i+1,CLASSES[i])
 print "</form>"
 
 # done

@@ -46,12 +46,11 @@ for file in files:
            # split the line in fields based on white space separators
            fields = line.split()
            # line should contain at least five fields
-           if len(fields) >= 5:
+           if len(fields) >= 4:
               # give the field elements names: id, gold-tag, guessed-tag, confidence
               thisId = fields[1]
               gold = fields[2]
-              guess = fields[3]
-              confidence = float(fields[4])
+              confidence = float(fields[-1])
               # if the gold tag is not blank: store it
               if gold != OTHER: 
                   goldTags[thisId] = gold
