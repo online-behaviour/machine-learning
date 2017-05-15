@@ -1,8 +1,10 @@
 #!/usr/bin/python -W all
 """
     word2vec.py: process tweets with word2vec vectors
-    usage: word2vec.py [-m model-file] -w word-vector-file -T train-file -t test-file
-    note: optional model file is a text file from which the word vector file is built
+    usage: word2vec.py [-x] [-m model-file [-l word-vector-length]] -w word-vector-file -T train-file -t test-file
+    notes: 
+    - optional model file is a text file from which the word vector file is built
+    - option x writes tokenized sentences to stdout
     20170504 erikt(at)xs4all.nl
 """
 
@@ -22,7 +24,6 @@ from sklearn import svm
 
 # constants
 COMMAND = "word2vec.py"
-MAXVECTOR = 200
 TWEETCOLUMN = 4
 CLASSCOLUMN = 9
 HASHEADING = False
@@ -34,6 +35,10 @@ trainFile = ""
 testFile = ""
 wordvectorFile = ""
 modelFile = ""
+# length of word vectors
+maxVector = 200
+# exporting tokenized sentences
+exportTokens = False
 
 # check for command line options
 def checkOptions():
@@ -41,24 +46,27 @@ def checkOptions():
     global testFile
     global wordvectorFile
     global modelFile
+    global maxVector
+    global exportTokens
 
-    try: options = getopt.getopt(sys.argv,"T:t:w:m:",[])
+    try: options = getopt.getopt(sys.argv,"T:t:w:m:l:x",[])
     except: sys.exit(USAGE)
     for option in options[0]:
         if option[0] == "-T": trainFile = option[1]
         elif option[0] == "-t": testFile = option[1]
         elif option[0] == "-w": wordvectorFile = option[1]
         elif option[0] == "-m": modelFile = option[1]
+        elif option[0] == "-l": maxVector = int(option[1])
+        elif option[0] == "-x": exportTokens = True
     if trainFile == "" or testFile == "" or wordvectorFile == "":
         print trainFile
         sys.exit(USAGE)
 
 # create data matrix (no sparse version needed)
 def makeVectors(tokenizeResults,wordvecModel):
-    tweetVectors = numpy.zeros((len(tokenizeResults),MAXVECTOR),dtype=numpy.float64)
+    tweetVectors = numpy.zeros((len(tokenizeResults),maxVector),dtype=numpy.float64)
     # process all tweets
     for i in range(0,len(tokenizeResults)):
-        if i == 1000*(int(i/1000)): print i # debugging: show process progress
         # process all tokens in this tweet
         for token in tokenizeResults[i]:
             # if the token is present in the word vector model
@@ -89,24 +97,32 @@ if modelFile != "":
     readDataResults = naiveBayes.readData(modelFile,targetClasses[0],TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
     # tokenize the model data
     tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
-    # build the word vectors
-    wordvecModel = gensim.models.Word2Vec(tokenizeResults, min_count=MINCOUNT, size=MAXVECTOR)
+    # build the word vectors (test sg=1,window=10)
+    wordvecModel = gensim.models.Word2Vec(tokenizeResults, min_count=MINCOUNT, size=maxVector)
     # save the word vectors
     wordvecModel.save(wordvectorFile)
 
 # load the word vector model from file
 wordvecModel = gensim.models.Word2Vec.load(wordvectorFile)
 
-# read test data, tokenize data, make vector matrix
-readDataResults = naiveBayes.readData(testFile,targetClasses[0],TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
+# read training data, tokenize data, make vector matrix
+readDataResults = naiveBayes.readData(trainFile,"",TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
 tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
-makeVectorsResultsTest = makeVectors(tokenizeResults,wordvecModel)
+if exportTokens:
+    for i in range(0,len(tokenizeResults)):
+        sys.stdout.write("__label__"+readDataResults["classes"][i])
+        for j in range(0,len(tokenizeResults[i])): 
+            sys.stdout.write(" ")
+            sys.stdout.write(unicode(tokenizeResults[i][j]).encode('utf8'))
+        sys.stdout.write("\n")
+    sys.exit()
+makeVectorsResultsTrain = makeVectors(tokenizeResults,wordvecModel)
 # the matrix can be saved to file and reloaded in next runs but this does not gain much time
 
-# read training data, tokenize data, make vector matrix
-readDataResults = naiveBayes.readData(trainFile,targetClasses[0],TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
+# read test data, tokenize data, make vector matrix
+readDataResults = naiveBayes.readData(testFile,"",TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
 tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
-makeVectorsResultsTrain = makeVectors(tokenizeResults,wordvecModel)
+makeVectorsResultsTest = makeVectors(tokenizeResults,wordvecModel)
 
 # run binary svm experiments: one for each target class
 for targetClass in targetClasses:

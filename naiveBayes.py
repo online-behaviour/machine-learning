@@ -62,7 +62,8 @@ def readData(file,targetClass,tweetColumn,classColumn,fileHasHeading):
             # add NONE if there is no class column
             if classColumn == NONE: classes.append(NONE)
             # add the targetClass whereever specified
-            elif row[classColumn] == targetClass: classes.append(row[classColumn])
+            elif row[classColumn] == targetClass or targetClass == "": 
+                classes.append(row[classColumn])
             # add OTHER for all other class values
             else: classes.append(OTHER)
         csvfile.close()
