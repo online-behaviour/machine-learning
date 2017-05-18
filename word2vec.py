@@ -15,6 +15,7 @@ import logging
 import numpy
 import naiveBayes
 import os.path
+import re
 import sys
 from scipy.sparse import csr_matrix
 from sklearn.naive_bayes import BernoulliNB
@@ -24,8 +25,10 @@ from sklearn import svm
 
 # constants
 COMMAND = "word2vec.py"
-TWEETCOLUMN = 4
-CLASSCOLUMN = 9
+TWEETCOLUMN = 4 # column tweet text in test data file dutch-2012.csv
+CLASSCOLUMN = 9 # column tweeting behaviour (T3) in file dutch-2012.csv
+IDCOLUMN = 0 # column with the id of the current tweet
+PARENTCOLUMN = 5 # column of the id of the parent of the tweet if it is a retweet or reply (otherwise: None)
 HASHEADING = False
 MINCOUNT = 5
 USAGE = "usage: "+COMMAND+" [-m model-file] -w word-vector-file -T train-file -t test-file\n"
@@ -84,6 +87,31 @@ def makeBinary(vector):
         else: outVector.append(1)
     return(outVector)
 
+# read wordvector file from file in format of fasttext:
+# first line: nbrOfVectors vectorLength; rest: token vector
+def readFasttextModel(wordvectorFile):
+    global maxVector
+    try: inFile = open(wordvectorFile,"r")
+    except: sys.exit(COMMAND+": cannot read file "+wordvectorFile)
+    wordvectorModel = {}
+    lineCounter = 0
+    expectedLines = -1
+    for line in inFile:
+        line = line.rstrip()
+        fields = line.split()
+        lineCounter += 1
+        if lineCounter == 1:
+            if len(fields) != 2: sys.exit(COMMAND+": unexpected first line of file "+wordvectorFile+": "+line)
+            expectedLines = int(fields[0])
+            maxVector = int(fields[1])
+        else:
+            if len(fields) != 1+maxVector: sys.exit(COMMAND+": unexpected line in file "+wordvectorFile+": "+line)
+            token = fields.pop(0)
+            for i in range(0,len(fields)): fields[i] = float(fields[i])
+            wordvectorModel[token] = fields
+    inFile.close()
+    return(wordvectorModel)
+
 # main function starts here
 checkOptions()
 
@@ -94,7 +122,7 @@ if len(targetClasses) == 0: sys.exit(COMMAND+": cannot find target classes\n")
 # if required: train the word vector model and save it to file
 if modelFile != "":
     # read the model data
-    readDataResults = naiveBayes.readData(modelFile,targetClasses[0],TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
+    readDataResults = naiveBayes.readData(modelFile,targetClasses[0],TWEETCOLUMN,CLASSCOLUMN,IDCOLUMN,PARENTCOLUMN,HASHEADING)
     # tokenize the model data
     tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
     # build the word vectors (test sg=1,window=10)
@@ -103,10 +131,16 @@ if modelFile != "":
     wordvecModel.save(wordvectorFile)
 
 # load the word vector model from file
-wordvecModel = gensim.models.Word2Vec.load(wordvectorFile)
+patternNameVec = re.compile("\.vec$")
+if not patternNameVec.search(wordvectorFile):
+    # read standard file format from gensim
+    wordvecModel = gensim.models.Word2Vec.load(wordvectorFile)
+else:
+   # read file format from fasttext
+   wordvecModel = readFasttextModel(wordvectorFile)
 
 # read training data, tokenize data, make vector matrix
-readDataResults = naiveBayes.readData(trainFile,"",TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
+readDataResults = naiveBayes.readData(trainFile,"",TWEETCOLUMN,CLASSCOLUMN,IDCOLUMN,PARENTCOLUMN,HASHEADING)
 tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
 if exportTokens:
     for i in range(0,len(tokenizeResults)):
@@ -120,23 +154,25 @@ makeVectorsResultsTrain = makeVectors(tokenizeResults,wordvecModel)
 # the matrix can be saved to file and reloaded in next runs but this does not gain much time
 
 # read test data, tokenize data, make vector matrix
-readDataResults = naiveBayes.readData(testFile,"",TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
+readDataResults = naiveBayes.readData(testFile,"",TWEETCOLUMN,CLASSCOLUMN,IDCOLUMN,PARENTCOLUMN,HASHEADING)
 tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
 makeVectorsResultsTest = makeVectors(tokenizeResults,wordvecModel)
 
 # run binary svm experiments: one for each target class
 for targetClass in targetClasses:
     # read the training and test file again to get the right class distribution for this target class
-    readDataResultsTrain = naiveBayes.readData(trainFile,targetClass,TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
-    readDataResultsTest = naiveBayes.readData(testFile,targetClass,TWEETCOLUMN,CLASSCOLUMN,HASHEADING)
+    readDataResultsTrain = naiveBayes.readData(trainFile,targetClass,TWEETCOLUMN,CLASSCOLUMN,IDCOLUMN,PARENTCOLUMN,HASHEADING)
+    readDataResultsTest = naiveBayes.readData(testFile,targetClass,TWEETCOLUMN,CLASSCOLUMN,IDCOLUMN,PARENTCOLUMN,HASHEADING)
     # get binary version of train classes
     binTrainClasses = makeBinary(readDataResultsTrain["classes"])
     # perform svm experiment: http://scikit-learn.org/stable/modules/svm.html (1.4.1.1)
     clf = svm.SVC(decision_function_shape='ovo')     # definition
     clf.fit(makeVectorsResultsTrain,binTrainClasses) # training
     outFile = open(testFile+".out."+targetClass,"w") # output file for test results
+    scores = clf.decision_function(makeVectorsResultsTest) # process all test items
     for i in range(0,len(makeVectorsResultsTest)):
-        score = clf.decision_function([makeVectorsResultsTest[i]])[0] # process one test item
-        print >>outFile, "# %d: %s %0.3f" % (i,readDataResultsTest["classes"][i],score)
+        guess = "O"
+        if scores[i] >= 0: guess = targetClass
+        print >>outFile, "# %d: %s %s %0.3f" % (i,readDataResultsTest["classes"][i],guess,scores[i])
     outFile.close()
 
