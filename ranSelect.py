@@ -18,7 +18,7 @@ COMMAND = sys.argv.pop(0).split("/")[-1]
 #cgitb.enable(display=0, logdir="/tmp/"+COMMAND)
 cgitb.enable()
 DATADIR = "/home/cloud/projects/online-behaviour/machine-learning"
-DATAFILE = "dutch-2012.csv.unique"
+DATAFILE = "dutch-2012.test.csv"
 ANNOFILE = "ANNOTATIONS."+COMMAND
 IDCOLUMN = 0
 USERCOLUMN = 2
@@ -31,18 +31,21 @@ CLASSES = ["Campaign Trail","Campaign Promotion","Campaign Action","Call to Vote
 correct = 0
 wrong = 0
 processed = {}
-annotate8 = True
+annotate8 = False
+lastProcessed = ""
 
 # read annotations file
 def readAnnotations(fileName):
     global processed
+    global lastProcessed
     try: inFile = open(fileName,"r")
     except: sys.exit(COMMAND+": cannot read file "+fileName)
     for line in inFile:
         line = line.rstrip()
         fields = line.split()
         if len(line) < 3: sys.exit(COMMAND+": unexpected line in file "+fileName+": "+line)
-        processed[fields[0]] = True
+        lastProcessed = fields[0]
+        processed[lastProcessed] = True
 
 # read the data from training or test file
 def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHeading):
@@ -63,7 +66,8 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
             thisId = row[idColumn]
             thisClass = row[classColumn]
             # only keep unannotated tweets of class 8
-            if not thisId in processed and (not annotate8 or thisClass == "8"):
+            if (not thisId in processed or thisId == lastProcessed) and \
+               (not annotate8 or thisClass == "8"):
                 # add tweet text to list
                 text.append(row[tweetColumn])
                 # add tweet text to list
@@ -109,20 +113,41 @@ if "id" in form:
     thisId = form["id"].value
     if "ANNOTATE8" in form.keys(): annotate8 = True
     else: annotate8 = False
-    print "<font color=\"green\">"
-    # correct += 1
+    if annotatedClass == goldClass: 
+        print "<font color=\"green\">"
+        correct += 1
+    else:
+        print "<font color=\"red\">"
+        wrong += 1
     processed[thisId] = True
     contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+user+"/status/"+thisId+"\">context</a>"
-    print "Antwoord: %s; Tweet: %s %s %s" % (annotatedClass,thisId,tweet,contextLink)
+    print "Antwoord: %s; Correct: %s; Tweet: %s %s %s" % (annotatedClass,goldClass,thisId,tweet,contextLink)
     print "</font>\n"
-#   if correct+wrong > 0:
-#       print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
+    if correct+wrong > 0:
+        print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
     print "<hr>"
     # write annotation to logfile
     try: outFile = open(DATADIR+"/"+ANNOFILE,"a")
     except: sys.exit(COMMAND+": cannot write logfile "+DATADIR+"/"+ANNOFILE)
     print >>outFile,"%s %s %s %s" % (thisId,goldClass,annotatedClass,os.environ["REMOTE_ADDR"])
     outFile.close()
+
+# we have included the lastProcessed tweet in the data set of remaining tweets
+# so that it can be reannotated if the annotator made an error
+# now remove it again to avoid selecting it for a second time
+if lastProcessed != "":
+    readDataResults["id2index"][readDataResults["ids"][-1]] = readDataResults["id2index"][lastProcessed]
+    readDataResults["text"][readDataResults["id2index"][lastProcessed]] = readDataResults["text"][-1]
+    readDataResults["text"].pop(-1)
+    readDataResults["classes"][readDataResults["id2index"][lastProcessed]] = readDataResults["classes"][-1]
+    readDataResults["classes"].pop(-1)
+    readDataResults["ids"][readDataResults["id2index"][lastProcessed]] = readDataResults["ids"][-1]
+    readDataResults["ids"].pop(-1)
+    readDataResults["replies"][readDataResults["id2index"][lastProcessed]] = readDataResults["replies"][-1]
+    readDataResults["replies"].pop(-1)
+    readDataResults["users"][readDataResults["id2index"][lastProcessed]] = readDataResults["users"][-1]
+    readDataResults["users"].pop(-1)
+    readDataResults["id2index"][lastProcessed] = -1
 
 # check if all tweets have been processed
 if len(readDataResults["text"]) <= 1:
@@ -150,14 +175,14 @@ if len(replyTexts) > 0:
     print "</div>"
 contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+readDataResults["users"][index]+"/status/"+readDataResults["ids"][index]+"\">context</a>"
 # show tweet
-if annotate8: sys.stdout.write(str(1+len(processed))+": ")
+sys.stdout.write(str(1+len(processed))+": ")
 print "%s %s" % (readDataResults["text"][index],contextLink)
 
 print "<form>"
 print "<input type=\"hidden\" name=\"id\" value=\"%s\">" % (readDataResults["ids"][index])
 print "<input type=\"hidden\" name=\"user\" value=\"%s\">" % (readDataResults["users"][index])
-#print "<input type=\"hidden\" name=\"correct\" value=\"%s\">" % (correct)
-#print "<input type=\"hidden\" name=\"wrong\" value=\"%s\">" % (wrong)
+print "<input type=\"hidden\" name=\"correct\" value=\"%s\">" % (correct)
+print "<input type=\"hidden\" name=\"wrong\" value=\"%s\">" % (wrong)
 if annotate8: print "<input type=\"hidden\" name=\"ANNOTATE8\" value=\"1\">"
 print "<table cellspacing=\"20px\">"
 for i in range(0,len(CLASSES)):
