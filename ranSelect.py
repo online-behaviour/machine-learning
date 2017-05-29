@@ -18,7 +18,7 @@ COMMAND = sys.argv.pop(0).split("/")[-1]
 #cgitb.enable(display=0, logdir="/tmp/"+COMMAND)
 cgitb.enable()
 DATADIR = "/home/cloud/projects/online-behaviour/machine-learning"
-DATAFILE = "dutch-2012.test.csv"
+DATAFILE = "dutch-2012.csv.8.questionmark"
 ANNOFILE = "ANNOTATIONS."+COMMAND
 IDCOLUMN = 0
 USERCOLUMN = 2
@@ -121,7 +121,7 @@ if "id" in form:
         wrong += 1
     processed[thisId] = True
     contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+user+"/status/"+thisId+"\">context</a>"
-    print "Antwoord: %s; Correct: %s; Tweet: %s %s %s" % (annotatedClass,goldClass,thisId,tweet,contextLink)
+    print "<div style=\"height:30px\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClass,tweet,contextLink)
     print "</font>\n"
     if correct+wrong > 0:
         print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
@@ -175,8 +175,8 @@ if len(replyTexts) > 0:
     print "</div>"
 contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+readDataResults["users"][index]+"/status/"+readDataResults["ids"][index]+"\">context</a>"
 # show tweet
-sys.stdout.write(str(1+len(processed))+": ")
-print "%s %s" % (readDataResults["text"][index],contextLink)
+sys.stdout.write("<div style=\"height:30px\">"+str(1+len(processed))+": ")
+print "%s %s</div>" % (readDataResults["text"][index],contextLink)
 
 print "<form>"
 print "<input type=\"hidden\" name=\"id\" value=\"%s\">" % (readDataResults["ids"][index])
