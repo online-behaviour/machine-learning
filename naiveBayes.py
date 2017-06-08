@@ -30,7 +30,7 @@ TRAIN2COLUMNTWEET = 4 # column number of the tweet text in the extra training da
 TRAIN2COLUMNCLASS = 0 # column number of the tweet class in the extra training data
 OTHER = "O" # other value in binary experiment
 IDCOLUMN = 0 # column with the id of the current tweet
-PARENTCOLUMN = 5 # column of the id of the parent of the tweet if it is a retweet or reply (otherwise: None)
+PARENTCOLUMN = NONE # column of the id of the parent of the tweet if it is a retweet or reply (otherwise: None) (default: 5)
 
 # getTargetClasses: read training data to determine target classes
 def getTargetClasses(file,classColumn,fileHasHeading):

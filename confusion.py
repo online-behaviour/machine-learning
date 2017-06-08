@@ -13,6 +13,7 @@ GOLDCOLUMN = int(sys.argv.pop(0))
 GUESSEDCOLUMN = int(sys.argv.pop(0))
 
 nbrOfClasses = {} # count per class
+nbrOfGuesses = {} # count per guess
 confusion = {} # confusion matrix: guesses per gold tag
 
 # process classifications
@@ -35,6 +36,8 @@ for line in sys.stdin:
     if not guess in nbrOfClasses: 
         nbrOfClasses[guess] = 0
         confusion[guess] = {}
+    if guess in nbrOfGuesses: nbrOfGuesses[guess] += 1
+    else: nbrOfGuesses[guess] = 1
     # add guess to confusion matrix
     if guess in confusion[gold]: confusion[gold][guess] += 1
     else: confusion[gold][guess] = 1
@@ -51,11 +54,22 @@ for gold in sorted(nbrOfClasses,key=nbrOfClasses.get,reverse=True):
             # pretty print: create output string of at least four characters
             outString = str(confusion[gold][guess])
             while not patternFourChars.match(outString): outString = " "+outString
-            sys.stdout.write(" "+outString)
+            sys.stdout.write("&"+outString)
         # just print a period for unseen gold-guessed combinations
-        else: sys.stdout.write("    .")
-    # print a newline character to end this output line
-    print
+        else: sys.stdout.write("&   .")
+    # print precision counts
+    outString = str(nbrOfClasses[gold])
+    while len(outString) < 4: outString = " "+outString
+    print "&"+outString+"\\\\"
+# print recall counts
+sys.stdout.write("     ")
+for gold in sorted(nbrOfClasses,key=nbrOfClasses.get,reverse=True):
+    if not gold in nbrOfGuesses: outString = "0"
+    else: outString = str(nbrOfGuesses[gold])
+    while len(outString) < 4: outString = " "+outString
+    sys.stdout.write("&"+outString)
+print "\\\\"
 
+    
 # done
 sys.exit()

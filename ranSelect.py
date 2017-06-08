@@ -18,7 +18,7 @@ COMMAND = sys.argv.pop(0).split("/")[-1]
 #cgitb.enable(display=0, logdir="/tmp/"+COMMAND)
 cgitb.enable()
 DATADIR = "/home/cloud/projects/online-behaviour/machine-learning"
-DATAFILE = "dutch-2012.csv.8.questionmark"
+DATAFILE = "dutch-2012.csv.13" # 8.questionmark"
 ANNOFILE = "ANNOTATIONS."+COMMAND
 IDCOLUMN = 0
 USERCOLUMN = 2
