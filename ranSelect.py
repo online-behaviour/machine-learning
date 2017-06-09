@@ -18,7 +18,7 @@ COMMAND = sys.argv.pop(0).split("/")[-1]
 #cgitb.enable(display=0, logdir="/tmp/"+COMMAND)
 cgitb.enable()
 DATADIR = "/home/cloud/projects/online-behaviour/machine-learning"
-DATAFILE = "dutch-2012.csv.13" # 8.questionmark"
+DATAFILE = "dutch-2012.csv.8.questionmark" # 13"
 ANNOFILE = "ANNOTATIONS."+COMMAND
 IDCOLUMN = 0
 USERCOLUMN = 2
@@ -65,7 +65,7 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
             if lineNbr == 1 and fileHasHeading: continue
             thisId = row[idColumn]
             thisClass = row[classColumn]
-            # only keep unannotated tweets of class 8
+            # only keep unannotated tweets and the last one that was annotated
             if (not thisId in processed or thisId == lastProcessed) and \
                (not annotate8 or thisClass == "8"):
                 # add tweet text to list
@@ -91,6 +91,22 @@ def selectTweet():
        (readDataResults["classes"][index] != "8" or readDataResults["ids"][index] in processed.keys()):
        index = int(float(len(readDataResults["text"]))*random.random())
    return(index)
+
+# remove tweet with id thisId from readDataResults
+def deleteTweet(thisId):
+    global readDataResults
+    readDataResults["id2index"][readDataResults["ids"][-1]] = readDataResults["id2index"][thisId]
+    readDataResults["text"][readDataResults["id2index"][thisId]] = readDataResults["text"][-1]
+    readDataResults["text"].pop(-1)
+    readDataResults["classes"][readDataResults["id2index"][thisId]] = readDataResults["classes"][-1]
+    readDataResults["classes"].pop(-1)
+    readDataResults["ids"][readDataResults["id2index"][thisId]] = readDataResults["ids"][-1]
+    readDataResults["ids"].pop(-1)
+    readDataResults["replies"][readDataResults["id2index"][thisId]] = readDataResults["replies"][-1]
+    readDataResults["replies"].pop(-1)
+    readDataResults["users"][readDataResults["id2index"][thisId]] = readDataResults["users"][-1]
+    readDataResults["users"].pop(-1)
+    readDataResults["id2index"][thisId] = -1
 
 # cgi output initialization line
 print "Content-Type: text/html\n\n<html><head><title>annotate</title><meta charset=\"UTF-8\"></head><body>"
@@ -131,26 +147,15 @@ if "id" in form:
     except: sys.exit(COMMAND+": cannot write logfile "+DATADIR+"/"+ANNOFILE)
     print >>outFile,"%s %s %s %s" % (thisId,goldClass,annotatedClass,os.environ["REMOTE_ADDR"])
     outFile.close()
+    deleteTweet(thisId)
 
 # we have included the lastProcessed tweet in the data set of remaining tweets
 # so that it can be reannotated if the annotator made an error
 # now remove it again to avoid selecting it for a second time
-if lastProcessed != "":
-    readDataResults["id2index"][readDataResults["ids"][-1]] = readDataResults["id2index"][lastProcessed]
-    readDataResults["text"][readDataResults["id2index"][lastProcessed]] = readDataResults["text"][-1]
-    readDataResults["text"].pop(-1)
-    readDataResults["classes"][readDataResults["id2index"][lastProcessed]] = readDataResults["classes"][-1]
-    readDataResults["classes"].pop(-1)
-    readDataResults["ids"][readDataResults["id2index"][lastProcessed]] = readDataResults["ids"][-1]
-    readDataResults["ids"].pop(-1)
-    readDataResults["replies"][readDataResults["id2index"][lastProcessed]] = readDataResults["replies"][-1]
-    readDataResults["replies"].pop(-1)
-    readDataResults["users"][readDataResults["id2index"][lastProcessed]] = readDataResults["users"][-1]
-    readDataResults["users"].pop(-1)
-    readDataResults["id2index"][lastProcessed] = -1
+if lastProcessed != "": deleteTweet(lastProcessed)
 
 # check if all tweets have been processed
-if len(readDataResults["text"]) <= 1:
+if len(readDataResults["text"]) <= 0:
     print "Klaar"
     sys.exit()
 index = selectTweet()
