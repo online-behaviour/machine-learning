@@ -1,9 +1,11 @@
 #!/usr/bin/python -W all
 """
     naiveBayes.py: run naive bayes experiment
-    usage: naiveBayes.py -T train-file -t test-file [-e train-file-2] [-o offsett] [-c]
-    note: input files are expected to contain csv (dutch-2012.csv, getTweetsText.out.1.text)
-          option -c considers conversations
+    usage: naiveBayes.py -T train-file -t test-file [-e train-file-2] [-o offsett] [-c] [-b]
+    notes: input files are expected to contain csv (dutch-2012.csv, getTweetsText.out.1.text)
+           option -c considers conversations
+           option -b includes bigrams
+           option -f changes permitted minimum token frequency (default: 2)
     20170410 erikt(at)xs4all.nl
 """
 
@@ -20,28 +22,26 @@ from sklearn.naive_bayes import GaussianNB
 
 # constants definition
 COMMAND = sys.argv.pop(0)
-MINTOKENFREQ = 5     # minimum frequency of used tokens (rest is discarded)
 NONE = -1 # non-existing column
-TRAINCOLUMNTWEET = 4 # column tweet text in file dutch-2012.csv
-TRAINCOLUMNCLASS = 9 # column tweeting behaviour (T3) in file dutch-2012.csv
-TESTCOLUMNTWEET = 4 # column tweet text in test data file dutch-2012.csv
-TESTCOLUMNCLASS = 9 # column tweeting behaviour (T3) in file dutch-2012.csv
-TRAIN2COLUMNTWEET = 4 # column number of the tweet text in the extra training data
-TRAIN2COLUMNCLASS = 0 # column number of the tweet class in the extra training data
 OTHER = "O" # other value in binary experiment
-IDCOLUMN = 0 # column with the id of the current tweet
-PARENTCOLUMN = NONE # column of the id of the parent of the tweet if it is a retweet or reply (otherwise: None) (default: 5)
+minTokenFreq = 2     # minimum frequency of used tokens (rest is discarded)
 
 # getTargetClasses: read training data to determine target classes
-def getTargetClasses(file,classColumn,fileHasHeading):
+def getTargetClasses(file,fileHasHeading):
     targetClasses = []
+    classColumn = NONE
     with open(file,"rb") as csvfile:
         csvreader = csv.reader(csvfile,delimiter=',',quotechar='"')
         lineNbr = 0
         for row in csvreader:
             lineNbr += 1
-            # ignore first line if it is a heading
-            if lineNbr == 1 and fileHasHeading: continue
+            # first line is a heading
+            if lineNbr == 1:
+                for i in range(0,len(row)):
+                    if row[i] == "class" or row[i] == "t3": classColumn = i
+                continue
+            # sanity check
+            if classColumn == NONE: sys.exit(COMMAND+": class column definition missing in heading of file "+file)
             # add class to target class list
             if not row[classColumn] in targetClasses:
                 targetClasses.append(row[classColumn])
@@ -49,22 +49,34 @@ def getTargetClasses(file,classColumn,fileHasHeading):
     return(targetClasses)    
 
 # read the data from training or test file, with respect to certain target class
-def readData(file,targetClass,tweetColumn,classColumn,idColumn,parentColumn,fileHasHeading):
-    ids = []     # list with tweet ids
-    text = []    # list with tweet texts
-    classes = [] # list with tweet classes
+def readData(file,targetClass):
+    ids = []        # list with tweet ids
+    text = []       # list with tweet texts
+    classes = []    # list with tweet classes
     parentsIds = [] # list with ids of parent tweets
+    idColumn = NONE
+    classColumn = NONE
+    tweetColumn = NONE
+    parentColumn = NONE
     with open(file,"rb") as csvfile:
         csvreader = csv.reader(csvfile,delimiter=',',quotechar='"')
         lineNbr = 0
         for row in csvreader:
             lineNbr += 1
-            # ignore first line if it is a heading
-            if lineNbr == 1 and fileHasHeading: continue
+            # first line is a heading
+            if lineNbr == 1:
+                for i in range(0,len(row)):
+                    if row[i] == "id": idColumn = i
+                    elif row[i] == "class" or row[i] == "t3": classColumn = i
+                    elif row[i] == "tweet": tweetColumn = i
+                    elif row[i] == "parent": parentColumn = i
+                continue
+            # sanity check
+            if tweetColumn == NONE: sys.exit(COMMAND+": tweet column definition missing in heading of file "+file)
             # add tweet id to list
-            ids.append(row[idColumn])
+            if idColumn != NONE: ids.append(row[idColumn])
             # add tweet id to list
-            parentsIds.append(row[parentColumn])
+            if parentColumn != NONE: parentsIds.append(row[parentColumn])
             # add tweet text to list
             text.append(row[tweetColumn])
             # add tweet class to list
@@ -105,6 +117,17 @@ def tokenize(text):
         tokenizedText.append(nltk.word_tokenize(unicode(text[i],"utf8")))
     return(tokenizedText)
 
+# add bigrams to tokenized text
+def addBigrams(text):
+    for i in range(0,len(text)):
+        bigrams = []
+        sentence = text[i]
+        for j in range(0,len(sentence)):
+            if j+1 < len(sentence):
+                bigrams.append(sentence[j]+"_"+sentence[j+1])
+        text[i].extend(bigrams)
+    return(text)
+
 # select tokens as features based on their frequencies
 def selectFeatures(tokenizedText):
     # count tokens
@@ -116,7 +139,7 @@ def selectFeatures(tokenizedText):
     # select tokens based on frequency
     selectedTokens = {}
     for token in tokenCounts:
-        if tokenCounts[token] >= MINTOKENFREQ:
+        if tokenCounts[token] >= minTokenFreq:
             selectedTokens[token] = len(selectedTokens)
     # done
     return(selectedTokens)
@@ -155,10 +178,12 @@ def main(argv):
     offset = 0
     # conversation flag
     useConversations = False
+    # bigram flag
+    useBigrams = False
     # usage error message
     usage = "usage: "+COMMAND+" -T train-file -t test-file [-e extra-train-file] [-o offset]"
     # process command line arguments
-    try: options = getopt.getopt(argv,"T:t:e:o:c",[])
+    try: options = getopt.getopt(argv,"T:t:e:o:cbf:",[])
     except: sys.exit(usage)
     for option in options[0]:
         if option[0] == "-T": trainFile = option[1]
@@ -166,33 +191,39 @@ def main(argv):
         elif option[0] == "-e": trainFile2 = option[1]
         elif option[0] == "-o": offset = int(option[1])
         elif option[0] == "-c": useConversations = True
+        elif option[0] == "-b": useBigrams = True
+        elif option[0] == "-f": minTokenFreq = option[1]
     if testFile == "" or trainFile == "": sys.exit(usage)
     # get target classes from training data file
-    targetClasses = getTargetClasses(trainFile,TRAINCOLUMNCLASS,False)
+    targetClasses = getTargetClasses(trainFile,False)
     # perform a binary experiment (1 vs rest) for each target class
     for targetClass in sorted(targetClasses):
         # read the data from the training and test file
-        readDataTrain = readData(trainFile,targetClass,TRAINCOLUMNTWEET,TRAINCOLUMNCLASS,IDCOLUMN,PARENTCOLUMN,False)
-        readDataTest = readData(testFile,targetClass,TESTCOLUMNTWEET,TESTCOLUMNCLASS,IDCOLUMN,PARENTCOLUMN,False)
+        trainData = readData(trainFile,targetClass)
+        testData = readData(testFile,targetClass)
         if trainFile2 != "":
-            readDataTrain2 = readData(trainFile2,targetClass,TRAIN2COLUMNTWEET,TRAIN2COLUMNCLASS,IDCOLUMN,PARENTCOLUMN,False)
-            readDataTrain["text"].extend(readDataTrain2["text"])
-            readDataTrain["classes"].extend(readDataTrain2["classes"])
-            readDataTrain["parents"].extend(readDataTrain2["parents"])
+            train2Data = readData(trainFile2,targetClass)
+            trainData["text"].extend(train2Data["text"])
+            trainData["classes"].extend(train2Data["classes"])
+            trainData["parents"].extend(train2Data["parents"])
         # tokenize the text
-        trainTokenized = tokenize(readDataTrain["text"])
-        testTokenized = tokenize(readDataTest["text"])
+        trainTokenized = tokenize(trainData["text"])
+        testTokenized = tokenize(testData["text"])
+        # add bigrams to the text
+        if useBigrams:
+            trainTokenized = addBigrams(trainTokenized)
+            testTokenized = addBigrams(testTokenized)
         # select tokens from the training data as features
         selectedTokens = selectFeatures(trainTokenized)
         # convert the text to a sparse number matrix
-        trainMatrix = makeVectors(trainTokenized,selectedTokens,readDataTrain["parents"],useConversations)
-        testMatrix = makeVectors(testTokenized,selectedTokens,readDataTest["parents"],useConversations)
+        trainMatrix = makeVectors(trainTokenized,selectedTokens,trainData["parents"],useConversations)
+        testMatrix = makeVectors(testTokenized,selectedTokens,testData["parents"],useConversations)
         # perform naive bayes experiment
         # first: set experiment type
         # alternatives: MultinomialNB(50.5) GaussianNB(-) BernoulliNB(49.7)
         bnbExperiment = MultinomialNB()
         # train
-        bnbExperiment.fit(trainMatrix,readDataTrain["classes"])
+        bnbExperiment.fit(trainMatrix,trainData["classes"])
         # test
         confidences = bnbExperiment.predict_proba(testMatrix)
         # process results
@@ -202,7 +233,7 @@ def main(argv):
         goldTotal = 0
         # show result per data line
         for i in range(0,len(testTokenized)):
-            print >>outFile, "# %d: %s %s %0.3f" % (i+offset,readDataTest["classes"][i],targetClass,confidences[i][0])
+            print >>outFile, "# %d: %s %s %0.3f" % (i+offset,testData["classes"][i],targetClass,confidences[i][0])
         outFile.close()
 
 if __name__ == "__main__":

@@ -38,24 +38,25 @@ args = checkOptions()
 files = args
 # initialize gold tags, guess tags and confidence values
 goldTags = {}
-guessedTags = {}
-confidenceValues = {}
+guessedTags = {} # best classes per item
+confidenceValues = {} # best confidence scores per item
+confidenceValues2 = {} # second best confidence scores per item
 history = {}
 # process files
-for file in files:
+for fileName in files:
     try:
-        inFile = open(file,"r") # try to open the current input file
+        inFile = open(fileName,"r") # open the current input file
     except:
         sys.exit(COMMAND+": cannot read file "+file+"!\n")
     # determine gold tag based on fila name
-    fields = file.split(".")
+    fields = fileName.split(".")
     fileNameGoldTag = fields[-1]
     patternHash = re.compile("^#")
     # confidence score data, necessary for normalization
     confidences = {}
     confidenceMax = -1000
     confidenceMin = 1000
-    # read each line of the fil
+    # read each line of the file
     for line in inFile:
         # only process line that start with a hash sign
         if patternHash.match(line):
@@ -76,6 +77,7 @@ for file in files:
               confidences[thisId] = confidence
               if confidence > confidenceMax: confidenceMax = confidence
               if confidence < confidenceMin: confidenceMin = confidence
+    inFile.close()
     # normalize confidences
     for thisId in confidences:
         # skip normalization
@@ -87,7 +89,11 @@ for file in files:
         # keep the tag with the highest confidence
         if not thisId in guessedTags or confidences[thisId] > confidenceValues[thisId]:
             guessedTags[thisId] = fileNameGoldTag
+            if thisId in confidenceValues:
+                confidenceValues2[thisId] = confidenceValues[thisId]
             confidenceValues[thisId] = confidences[thisId]
+        elif not thisId in confidenceValues2 or confidences[thisId] > confidenceValues2[thisId]:
+            confidenceValues2[thisId] = confidences[thisId]
 
 # determine default guess: most frequently guessed tag
 counts = {}
@@ -114,7 +120,7 @@ for thisId in sorted(guessedTags.iterkeys()):
         guessedTags[thisId] = OTHER
         unclassified += 1
     # show results
-    print "# %s %s %s %0.3f %s" % (thisId,goldTags[thisId],guessedTags[thisId],confidenceValues[thisId],history[thisId])
+    print "# %s %s %s %0.3f %0.3f %s" % (thisId,goldTags[thisId],guessedTags[thisId],confidenceValues[thisId],confidenceValues2[thisId],history[thisId])
 if unclassified > 0:
     sys.stderr.write("unclassified: "+str(unclassified)+"\n")
 
