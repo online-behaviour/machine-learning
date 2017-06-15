@@ -47,7 +47,7 @@ for fileName in files:
     try:
         inFile = open(fileName,"r") # open the current input file
     except:
-        sys.exit(COMMAND+": cannot read file "+file+"!\n")
+        sys.exit(COMMAND+": cannot read file "+fileName+"!\n")
     # determine gold tag based on fila name
     fields = fileName.split(".")
     fileNameGoldTag = fields[-1]
