@@ -7,7 +7,7 @@ Media](https://www.esciencecenter.nl/project/automated-analysis-of-online-behavi
 a cooperation of the University of Groningen and the
 Netherlands eScience Center. This project also has a
 software repository regarding [finding
-journalists](../find-journalists)
+journalists](/online-behaviour/find-journalists)
 
 ## getTweetsUser.py
 
@@ -19,7 +19,9 @@ tweets from certain users. Run like:
 ```
 
 It will retrieve all available tweets from the specified
-used and store these in the specified file. The command may
+users and store these in the specified file. The tweets are
+stored in the data format
+[JSON](https://en.wikipedia.org/wiki/JSON). The command may
 require several minutes to complete. 
 
 The script needs your Twitter account data to be stored in a
