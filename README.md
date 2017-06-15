@@ -7,7 +7,7 @@ Media](https://www.esciencecenter.nl/project/automated-analysis-of-online-behavi
 a cooperation of the University of Groningen and the
 Netherlands eScience Center. This project also has a
 software repository regarding [finding
-journalists](/online-behaviour/find-journalists)
+journalists](https://github.com/online-behaviour/find-journalists)
 
 ## getTweetsUser.py
 
