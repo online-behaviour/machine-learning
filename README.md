@@ -16,6 +16,7 @@ tweets from certain users. Run like:
 
 ```
 ./getTweetsUser.py barackobama realdonaldtrump > file
+```
 
 It will retrieve all available tweets from the specified
 used and store these in the specified file. The command may
@@ -44,10 +45,11 @@ the tweets from the JSON output of getTweetsUser.py:
 
 ```
 ./getTweetText.py < getTweetsUser.py.out > file
+```
 
 ## (other scripts need to be documented ...)
 
 ## Contact
 
-e.tjongkimsang(at)esciencecenter.nl
+Erik Tjong Kim Sang, e.tjongkimsang(at)esciencecenter.nl
 
