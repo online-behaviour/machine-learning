@@ -33,5 +33,6 @@ for line in sys.stdin:
             bestClass = thisClass
             bestCount = classes[thisClass]
     # print the most frequent class
-    print bestClass+" "+str(bestCount)
+    percentage = float(bestCount)/float(len(tokens))
+    print "%s %0.2f" % (bestClass,percentage)
 

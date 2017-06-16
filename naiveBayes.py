@@ -24,6 +24,8 @@ from sklearn.naive_bayes import GaussianNB
 COMMAND = sys.argv.pop(0)
 NONE = -1 # non-existing column
 OTHER = "O" # other value in binary experiment
+TWEETCOLUMNNAME = "D5_Message"
+CLASSCOLUMNNAME = "T4_Function2_Prim"
 minTokenFreq = 2     # minimum frequency of used tokens (rest is discarded)
 
 # getTargetClasses: read training data to determine target classes
@@ -38,7 +40,7 @@ def getTargetClasses(file,fileHasHeading):
             # first line is a heading
             if lineNbr == 1:
                 for i in range(0,len(row)):
-                    if row[i] == "class" or row[i] == "t3": classColumn = i
+                    if row[i] == "class" or row[i] == CLASSCOLUMNNAME: classColumn = i
                 continue
             # sanity check
             if classColumn == NONE: sys.exit(COMMAND+": class column definition missing in heading of file "+file)
@@ -67,8 +69,8 @@ def readData(file,targetClass):
             if lineNbr == 1:
                 for i in range(0,len(row)):
                     if row[i] == "id": idColumn = i
-                    elif row[i] == "class" or row[i] == "t3": classColumn = i
-                    elif row[i] == "tweet": tweetColumn = i
+                    elif row[i] == "class" or row[i] == CLASSCOLUMNNAME: classColumn = i
+                    elif row[i] == "tweet" or row[i] == TWEETCOLUMNNAME: tweetColumn = i
                     elif row[i] == "parent": parentColumn = i
                 continue
             # sanity check
