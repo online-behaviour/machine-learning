@@ -25,7 +25,7 @@ COMMAND = sys.argv.pop(0)
 NONE = -1 # non-existing column
 OTHER = "O" # other value in binary experiment
 TWEETCOLUMNNAME = "D5_Message"
-CLASSCOLUMNNAME = "T4_Function2_Prim"
+CLASSCOLUMNNAME = "T3"
 minTokenFreq = 2     # minimum frequency of used tokens (rest is discarded)
 
 # getTargetClasses: read training data to determine target classes
