@@ -29,7 +29,7 @@ TWEETCOLUMN = 4 # column tweet text in test data file dutch-2012.csv
 CLASSCOLUMN = 9 # column tweeting behaviour (T3) in file dutch-2012.csv
 IDCOLUMN = 0 # column with the id of the current tweet
 PARENTCOLUMN = 5 # column of the id of the parent of the tweet if it is a retweet or reply (otherwise: None)
-HASHEADING = False
+HASHEADING = True
 MINCOUNT = 5
 USAGE = "usage: "+COMMAND+" [-m model-file] -w word-vector-file -T train-file -t test-file\n"
 
@@ -116,13 +116,13 @@ def readFasttextModel(wordvectorFile):
 checkOptions()
 
 # get target classes from training data file
-targetClasses = naiveBayes.getTargetClasses(trainFile,CLASSCOLUMN,HASHEADING)
+targetClasses = naiveBayes.getTargetClasses(trainFile,HASHEADING)
 if len(targetClasses) == 0: sys.exit(COMMAND+": cannot find target classes\n")
 
 # if required: train the word vector model and save it to file
 if modelFile != "":
     # read the model data
-    readDataResults = naiveBayes.readData(modelFile,targetClasses[0],TWEETCOLUMN,CLASSCOLUMN,IDCOLUMN,PARENTCOLUMN,HASHEADING)
+    readDataResults = naiveBayes.readData(modelFile,targetClasses[0])
     # tokenize the model data
     tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
     # build the word vectors (test sg=1,window=10)
@@ -140,7 +140,7 @@ else:
    wordvecModel = readFasttextModel(wordvectorFile)
 
 # read training data, tokenize data, make vector matrix
-readDataResults = naiveBayes.readData(trainFile,"",TWEETCOLUMN,CLASSCOLUMN,IDCOLUMN,PARENTCOLUMN,HASHEADING)
+readDataResults = naiveBayes.readData(trainFile,"")
 tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
 if exportTokens:
     for i in range(0,len(tokenizeResults)):
@@ -154,15 +154,15 @@ makeVectorsResultsTrain = makeVectors(tokenizeResults,wordvecModel)
 # the matrix can be saved to file and reloaded in next runs but this does not gain much time
 
 # read test data, tokenize data, make vector matrix
-readDataResults = naiveBayes.readData(testFile,"",TWEETCOLUMN,CLASSCOLUMN,IDCOLUMN,PARENTCOLUMN,HASHEADING)
+readDataResults = naiveBayes.readData(testFile,"")
 tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
 makeVectorsResultsTest = makeVectors(tokenizeResults,wordvecModel)
 
 # run binary svm experiments: one for each target class
 for targetClass in targetClasses:
     # read the training and test file again to get the right class distribution for this target class
-    readDataResultsTrain = naiveBayes.readData(trainFile,targetClass,TWEETCOLUMN,CLASSCOLUMN,IDCOLUMN,PARENTCOLUMN,HASHEADING)
-    readDataResultsTest = naiveBayes.readData(testFile,targetClass,TWEETCOLUMN,CLASSCOLUMN,IDCOLUMN,PARENTCOLUMN,HASHEADING)
+    readDataResultsTrain = naiveBayes.readData(trainFile,targetClass)
+    readDataResultsTest = naiveBayes.readData(testFile,targetClass)
     # get binary version of train classes
     binTrainClasses = makeBinary(readDataResultsTrain["classes"])
     # perform svm experiment: http://scikit-learn.org/stable/modules/svm.html (1.4.1.1)
