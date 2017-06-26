@@ -18,13 +18,14 @@ COMMAND = sys.argv.pop(0).split("/")[-1]
 #cgitb.enable(display=0, logdir="/tmp/"+COMMAND)
 cgitb.enable()
 DATADIR = "/home/cloud/projects/online-behaviour/machine-learning"
-DATAFILE = "dutch-2012.csv.8.questionmark" # 13"
+DATAFILE = "getTweetsUser.out.1.text.active.1000" # "dutch-2012.csv.8.questionmark" # 13"
 ANNOFILE = "ANNOTATIONS."+COMMAND
-IDCOLUMN = 0
-USERCOLUMN = 2
-TWEETCOLUMN = 4
-RETWEETCOLUMN = 5
-CLASSCOLUMN = 9
+# -1,6,0.991,7,0.901,674221988416720896,JoelVoordewind,Terecht zegt VdSteur dat daders moeten worden aangepakt na bedreigingen LHBTs en op voorspraak v CU vult hij aan ook christen-asielzoekers.
+IDCOLUMN = 5 # was 0
+USERCOLUMN = 6 # was 2
+TWEETCOLUMN = 7 # was 4
+RETWEETCOLUMN = -1 # was 5
+CLASSCOLUMN = 0 # was 9
 HASHEADING = False
 CLASSES = ["Campaign Trail","Campaign Promotion","Campaign Action","Call to Vote","News/Report","Own/Party Stance","Critique","Requesting Input","Advice/Helping","Acknowledgement","Personal","Other","Unknown"]
 

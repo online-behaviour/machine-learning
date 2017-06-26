@@ -62,7 +62,6 @@ def checkOptions():
         elif option[0] == "-l": maxVector = int(option[1])
         elif option[0] == "-x": exportTokens = True
     if trainFile == "" or testFile == "" or wordvectorFile == "":
-        print trainFile
         sys.exit(USAGE)
 
 # create data matrix (no sparse version needed)
