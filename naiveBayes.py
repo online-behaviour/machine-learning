@@ -26,10 +26,11 @@ NONE = -1 # non-existing column
 OTHER = "O" # other value in binary experiment
 TWEETCOLUMNNAME = "D5_Message"
 CLASSCOLUMNNAME = "T3"
+KEEPUPPERCASE = False
 minTokenFreq = 2     # minimum frequency of used tokens (rest is discarded)
 
 # getTargetClasses: read training data to determine target classes
-def getTargetClasses(file,fileHasHeading):
+def getTargetClasses(file):
     targetClasses = []
     classColumn = NONE
     with open(file,"rb") as csvfile:
@@ -103,14 +104,14 @@ def readData(file,targetClass):
     return({"text":text, "classes":classes, "ids":ids, "parents":parentsIndexes})
 
 # tokenize the tweet text
-def tokenize(text):
+def tokenize(text,keepUpperCase):
     tokenizedText = []   # list of lists of tokens per tweet
     patternEmail = re.compile("\S+@\S+")
     patternUserref = re.compile("@\S+")
     patternUrl = re.compile("http\S+")
     for i in range(0,len(text)):
         # convert tweet text to lower case 
-        text[i] = text[i].lower()
+        if not keepUpperCase: text[i] = text[i].lower()
         # collapse all mail addresses, urls and user references to one token
         text[i] = patternEmail.sub("MAIL",text[i])
         text[i] = patternUserref.sub("USER",text[i])
@@ -131,7 +132,7 @@ def addBigrams(text):
     return(text)
 
 # select tokens as features based on their frequencies
-def selectFeatures(tokenizedText):
+def selectFeatures(tokenizedText,minTokenFreq):
     # count tokens
     tokenCounts = {}
     for line in tokenizedText:
@@ -197,7 +198,7 @@ def main(argv):
         elif option[0] == "-f": minTokenFreq = option[1]
     if testFile == "" or trainFile == "": sys.exit(usage)
     # get target classes from training data file
-    targetClasses = getTargetClasses(trainFile,False)
+    targetClasses = getTargetClasses(trainFile)
     # perform a binary experiment (1 vs rest) for each target class
     for targetClass in sorted(targetClasses):
         # read the data from the training and test file
@@ -209,14 +210,14 @@ def main(argv):
             trainData["classes"].extend(train2Data["classes"])
             trainData["parents"].extend(train2Data["parents"])
         # tokenize the text
-        trainTokenized = tokenize(trainData["text"])
-        testTokenized = tokenize(testData["text"])
+        trainTokenized = tokenize(trainData["text"],KEEPUPPERCASE)
+        testTokenized = tokenize(testData["text"],KEEPUPPERCASE)
         # add bigrams to the text
         if useBigrams:
             trainTokenized = addBigrams(trainTokenized)
             testTokenized = addBigrams(testTokenized)
         # select tokens from the training data as features
-        selectedTokens = selectFeatures(trainTokenized)
+        selectedTokens = selectFeatures(trainTokenized,minTokenFreq)
         # convert the text to a sparse number matrix
         trainMatrix = makeVectors(trainTokenized,selectedTokens,trainData["parents"],useConversations)
         testMatrix = makeVectors(testTokenized,selectedTokens,testData["parents"],useConversations)

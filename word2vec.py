@@ -30,7 +30,7 @@ CLASSCOLUMN = 9 # column tweeting behaviour (T3) in file dutch-2012.csv
 IDCOLUMN = 0 # column with the id of the current tweet
 PARENTCOLUMN = 5 # column of the id of the parent of the tweet if it is a retweet or reply (otherwise: None)
 HASHEADING = True
-MINCOUNT = 5
+MINCOUNT = 2
 USAGE = "usage: "+COMMAND+" [-m model-file] -w word-vector-file -T train-file -t test-file\n"
 
 # input file names
@@ -42,6 +42,7 @@ modelFile = ""
 maxVector = 200
 # exporting tokenized sentences
 exportTokens = False
+selectedTokens = {}
 
 # check for command line options
 def checkOptions():
@@ -65,16 +66,18 @@ def checkOptions():
         sys.exit(USAGE)
 
 # create data matrix (no sparse version needed)
-def makeVectors(tokenizeResults,wordvecModel):
+def makeVectors(tokenizeResults,wordvecModel,selectedTokens):
     tweetVectors = numpy.zeros((len(tokenizeResults),maxVector),dtype=numpy.float64)
     # process all tweets
+    seen = {}
     for i in range(0,len(tokenizeResults)):
         # process all tokens in this tweet
         for token in tokenizeResults[i]:
             # if the token is present in the word vector model
-            if token in wordvecModel:
+            if token in wordvecModel and token in selectedTokens and not token in seen:
                 # add (+) the word vector of this token to the tweet vector
                 tweetVectors[i] += wordvecModel[token]
+                seen[token] = True
         # the result: a tweet vector which is the sum of its token vectors
     return(tweetVectors)
 
@@ -115,7 +118,7 @@ def readFasttextModel(wordvectorFile):
 checkOptions()
 
 # get target classes from training data file
-targetClasses = naiveBayes.getTargetClasses(trainFile,HASHEADING)
+targetClasses = naiveBayes.getTargetClasses(trainFile)
 if len(targetClasses) == 0: sys.exit(COMMAND+": cannot find target classes\n")
 
 # if required: train the word vector model and save it to file
@@ -132,15 +135,18 @@ if modelFile != "":
 # load the word vector model from file
 patternNameVec = re.compile("\.vec$")
 if not patternNameVec.search(wordvectorFile):
+    print >> sys.stderr,"loading gensim vector model from file: %s" % (wordvectorFile)
     # read standard file format from gensim
     wordvecModel = gensim.models.Word2Vec.load(wordvectorFile)
 else:
-   # read file format from fasttext
-   wordvecModel = readFasttextModel(wordvectorFile)
+    print >> sys.stderr,"loading fasttext vector model from file: %s" % (wordvectorFile)
+    # read file format from fasttext
+    wordvecModel = readFasttextModel(wordvectorFile)
 
 # read training data, tokenize data, make vector matrix
 readDataResults = naiveBayes.readData(trainFile,"")
 tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
+# check if we need to export tokens
 if exportTokens:
     for i in range(0,len(tokenizeResults)):
         sys.stdout.write("__label__"+readDataResults["classes"][i])
@@ -149,13 +155,15 @@ if exportTokens:
             sys.stdout.write(unicode(tokenizeResults[i][j]).encode('utf8'))
         sys.stdout.write("\n")
     sys.exit()
-makeVectorsResultsTrain = makeVectors(tokenizeResults,wordvecModel)
+# select tokens to be used in model, based on token frequency
+selectedTokens = naiveBayes.selectFeatures(tokenizeResults,MINCOUNT)
+makeVectorsResultsTrain = makeVectors(tokenizeResults,wordvecModel,selectedTokens)
 # the matrix can be saved to file and reloaded in next runs but this does not gain much time
 
 # read test data, tokenize data, make vector matrix
 readDataResults = naiveBayes.readData(testFile,"")
 tokenizeResults = naiveBayes.tokenize(readDataResults["text"])
-makeVectorsResultsTest = makeVectors(tokenizeResults,wordvecModel)
+makeVectorsResultsTest = makeVectors(tokenizeResults,wordvecModel,selectedTokens)
 
 # run binary svm experiments: one for each target class
 for targetClass in targetClasses:
