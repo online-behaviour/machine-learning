@@ -23,7 +23,6 @@ keepUpperCase = False
 
 try: options,arguments = getopt.getopt(sys.argv,"c",[])
 except: sys.exit(USAGE)
-print str(options)
 for option in options:
     if option[0] == "-c": keepUpperCase = True
 
