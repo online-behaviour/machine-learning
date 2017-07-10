@@ -5,13 +5,17 @@
    20170627 erikt(at)xs4all.nl
 """
 
+import math
 import re
 import sys
 
 COMMAND = sys.argv.pop(0)
 
-total = 0
-count = 0
+interval95 = 1.96
+
+total = 0.0
+count = 0.0
+numbers = []
 patternIsNumber = re.compile("^[0-9]+(\.[0-9]+)?$")
 for line in sys.stdin:
     line = line.rstrip()
@@ -20,5 +24,12 @@ for line in sys.stdin:
         if not patternIsNumber.match(n):
             sys.exit(COMMAND+": "+n+" is not a number\n")
         total += float(n)
-        count += 1
-print "average: %0.3f" % (total/count)
+        count += 1.0
+        numbers.append(float(n))
+average = total/count
+
+total = 0.0
+for n in numbers: total += (n-average)*(n-average)
+sd = math.sqrt(total/count)
+
+print "count: %d; average: %0.3f; sd: %0.3f; deviance: %0.3f" % (int(count),average,sd,sd*interval95)
