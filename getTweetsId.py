@@ -78,8 +78,7 @@ def main():
             batchString += b
         results = []
         try:
-            results = t.statuses.lookup(id=batchString)
-            #results = t.statuses.lookup(id = batchString)
+            results = t.statuses.lookup(_id=batchString)
         except TwitterHTTPError as e:
             # if there is an error: report this
             sys.stderr.write("error: "+str(e))
