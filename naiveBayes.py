@@ -27,7 +27,6 @@ OTHER = "O" # other value in binary experiment
 TWEETCOLUMNNAME = "D5_Message"
 CLASSCOLUMNNAME = "T3"
 KEEPUPPERCASE = False
-minTokenFreq = 2     # minimum frequency of used tokens (rest is discarded)
 
 # getTargetClasses: read training data to determine target classes
 def getTargetClasses(file):
@@ -183,6 +182,8 @@ def main(argv):
     useConversations = False
     # bigram flag
     useBigrams = False
+    # minimum frequency of used tokens (rest is discarded)
+    minTokenFreq = 2
     # usage error message
     usage = "usage: "+COMMAND+" -T train-file -t test-file [-e extra-train-file] [-o offset]"
     # process command line arguments
