@@ -14,6 +14,7 @@
     -S: select highest similarity
     -R: reverse selection: not the worst but the best
     -a: output all input data, first selected, then rest
+    -s: similarity file; line format: one float per line, one per data file item
     20170718 erikt(at)xs4all.nl
 """
 
@@ -318,7 +319,7 @@ def selectSimilarity(data):
     duplicates = []
     seen = {}
     for line in data:
-        if "similarity" in line: line["score"] = 1.0
+        if not "similarity" in line: line["score"] = 1.0
         else: line["score"] = line["similarity"]
         if len(selected) >= HALFTARGET and \
            ((not reverse and line["score"] <= selected[-1]["score"]) or \
