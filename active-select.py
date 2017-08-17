@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -W all
 """
     select-active.py: select training lines for active learning
-    usage: select-active.py -d dataFile -p probFile [-c|-r|-e|-l|-m|-E|-S] [-R] [-a] [-s simFile]
+    usage: select-active.py -d dataFile -p probFile [-c|-r|-e|-l|-m|-E|-S] [-R] [-a] [-s simFile] [-x]
     note: command line arguments:
     -d: data file, lines correspond with those of the probabilities file
     -p: file with probabilities; line format: class1 prob1 class2 prob2 ...
@@ -15,6 +15,7 @@
     -R: reverse selection: not the worst but the best
     -a: output all input data, first selected, then rest
     -s: similarity file; line format: one float per line, one per data file item
+    -x: print score in output before each line
     20170718 erikt(at)xs4all.nl
 """
 
@@ -24,8 +25,8 @@ import random
 import sys
 
 COMMAND = sys.argv.pop(0)
-USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-e|-l|-m|-E|-S] [-R] [-a] [-s simFile]"
-SAMPLESIZE = 4952
+USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-e|-l|-m|-E|-S] [-R] [-a] [-s simFile] [-x]"
+SAMPLESIZE = 5503
 HALFTARGET = int(float(SAMPLESIZE)/2.0)
 NBROFEXPFIELDS = 24
 dataFile = ""
@@ -39,10 +40,11 @@ useEntropyBest = False
 useEntropyAll= False
 useSimilarity= False
 outputAll = False
+printScore = False
 simFile = ""
 data = []
 
-try: options = getopt.getopt(sys.argv,"acd:eElmp:rRs:S",[])
+try: options = getopt.getopt(sys.argv,"acd:eElmp:rRs:Sx",[])
 except: sys.exit(USAGE)
 for option in options[0]:
     if option[0] == "-c": useConfidence = True
@@ -57,8 +59,11 @@ for option in options[0]:
     elif option[0] == "-a": outputAll = True
     elif option[0] == "-s": simFile = option[1]
     elif option[0] == "-S": useSimilarity = True
+    elif option[0] == "-x": printScore = True
     else: sys.exit(USAGE)
-if probFile == "" or dataFile == "": sys.exit(USAGE)
+if dataFile == "": sys.exit(USAGE)
+if probFile == ""  and \
+   (useEntropyBest or useEntropyAll or useMargin or useConfidence): sys.exit(USAGE)
 
 def selectRandom(data):
     selected = []
@@ -345,28 +350,31 @@ def selectSimilarity(data):
 
 ### main
 
-try: probStream = open(probFile,"r")
-except: sys.exit(COMMAND+": cannot read file "+probFile+"\n")
 try: dataStream = open(dataFile,"r")
 except: sys.exit(COMMAND+": cannot read file "+dataFile+"\n")
+if probFile != "":
+   try: probStream = open(probFile,"r")
+   except: sys.exit(COMMAND+": cannot read file "+probFile+"\n")
 if simFile != "":
    try: simStream = open(simFile,"r")
    except: sys.exit(COMMAND+": cannot read file "+simFile+"\n")
 
-for probLine in probStream:
-    probLine = probLine.rstrip()
-    dataLine = dataStream.readline()
-    if dataLine == "": sys.exit(COMMAND+": too few lines in data file "+dataFile)
+for dataLine in dataStream:
     dataLine = dataLine.rstrip()
-    line = { "scores":probLine, "data":dataLine }
+    line = { "data":dataLine }
+    if probFile != "":
+        probLine = probStream.readline()
+        if probLine == "": sys.exit(COMMAND+": too few lines in prob file "+probFile)
+        probLine = probLine.rstrip()
+        line["scores"] = probLine
     if simFile != "":
-       simLine = simStream.readline()
-       if simLine == "": sys.exit(COMMAND+": too few lines in similarity file "+simFile)
-       simLine = simLine.rstrip()
-       try: line["similarity"] = float(simLine)
-       except: sys.exit(COMMAND+": "+simLine+" is not a number")
+        simLine = simStream.readline()
+        if simLine == "": sys.exit(COMMAND+": too few lines in similarity file "+simFile)
+        simLine = simLine.rstrip()
+        try: line["similarity"] = float(simLine)
+        except: sys.exit(COMMAND+": "+simLine+" is not a number")
     data.append(line)
-probStream.close()
+if probFile != "": probStream.close()
 dataLine = dataStream.readline()
 dataStream.close()
 if dataLine != "": sys.exit(COMMAND+": too many lines in data file "+dataFile)
@@ -385,7 +393,9 @@ elif useSimilarity: selectResults = selectSimilarity(data)
 else: selectResults = selectRandom(data)
 
 for line in selectResults["selected"]:
-    print("%0.3f %s" % (line["score"],line["data"]))
+    if printScore: print("%0.3f" % (line["score"]),end=" ")
+    print("%s" % (line["data"]))
 if outputAll:
     for line in selectResults["rest"]:
-        print("%0.3f %s" % (line["score"],line["data"]))
+        if printScore: print("%0.3f" % (line["score"]),end=" ")
+        print("%s" % (line["data"]))
