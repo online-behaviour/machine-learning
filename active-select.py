@@ -16,6 +16,8 @@
     -a: output all input data, first selected, then rest
     -s: similarity file; line format: one float per line, one per data file item
     -x: print score in output before each line
+    -z: size of output in lines
+    -h: do not fill up half of the output with random samples
     20170718 erikt(at)xs4all.nl
 """
 
@@ -25,10 +27,9 @@ import random
 import sys
 
 COMMAND = sys.argv.pop(0)
-USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-e|-l|-m|-E|-S] [-R] [-a] [-s simFile] [-x]"
-SAMPLESIZE = 5503
-HALFTARGET = int(float(SAMPLESIZE)/2.0)
+USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-e|-l|-m|-E|-S] [-R] [-a] [-s simFile] [-x] [-z size]"
 NBROFEXPFIELDS = 24
+sampleSize = 5503
 dataFile = ""
 probFile = ""
 reverse = False
@@ -41,45 +42,47 @@ useEntropyAll= False
 useSimilarity= False
 outputAll = False
 printScore = False
+randomHalfSample = True
 simFile = ""
 data = []
 
-try: options = getopt.getopt(sys.argv,"acd:eElmp:rRs:Sx",[])
+try: options = getopt.getopt(sys.argv,"acd:eEhlmp:rRs:Sxz:",[])
 except: sys.exit(USAGE)
+nbrOfMethods = 0
 for option in options[0]:
     if option[0] == "-c": useConfidence = True
     elif option[0] == "-d": dataFile = option[1]
-    elif option[0] == "-e": useEntropyBest = True
-    elif option[0] == "-E": useEntropyAll = True
+    elif option[0] == "-e": useEntropyBest = True; nbrOfMethods += 1
+    elif option[0] == "-E": useEntropyAll = True; nbrOfMethods += 1
     elif option[0] == "-p": probFile = option[1]
-    elif option[0] == "-r": useRandom = True
-    elif option[0] == "-l": useLength = True
-    elif option[0] == "-m": useMargin = True
+    elif option[0] == "-r": useRandom = True; nbrOfMethods += 1
+    elif option[0] == "-l": useLength = True; nbrOfMethods += 1
+    elif option[0] == "-m": useMargin = True; nbrOfMethods += 1
     elif option[0] == "-R": reverse = True
     elif option[0] == "-a": outputAll = True
     elif option[0] == "-s": simFile = option[1]
     elif option[0] == "-S": useSimilarity = True
     elif option[0] == "-x": printScore = True
+    elif option[0] == "-z": sampleSize = int(option[1])
+    elif option[0] == "-h": randomHalfSample = False
     else: sys.exit(USAGE)
 if dataFile == "": sys.exit(USAGE)
 if probFile == ""  and \
    (useEntropyBest or useEntropyAll or useMargin or useConfidence): sys.exit(USAGE)
+if nbrOfMethods > 1: sys.exit(COMMAND+": multiple selection methods chosen!")
+if randomHalfSample: halfTarget = int(float(sampleSize)/2.0)
+else: halfTarget = sampleSize
 
-def selectRandom(data):
+def selectRandom(data,sampleSize):
     selected = []
-    duplicates = []
-    seen = {}
-    while len(selected) < SAMPLESIZE and len(data) > 0:
+    while len(selected) < sampleSize and len(data) > 0:
         index = int(len(data)*random.random())
         data[index]["score"] = 1.0
-        if not data[index]["data"] in seen:
-            selected.append(data[index])
-            seen[data[index]["data"]] = True
-        else: duplicates.append(data[index])
-        data[index] = data[-1]
-        data.pop(-1)
-    if len(selected) < SAMPLESIZE: sys.exit(COMMAND+": selectRandom(): out of data!\n")
-    return({"selected":selected,"rest":data+duplicates})
+        selected.append(data[index])
+        data.pop(index)
+    if len(selected) < sampleSize: 
+        sys.exit(COMMAND+": selectRandom(): out of data!\n")
+    return({"selected":selected,"rest":data})
 
 def computeConfidence(line):
     probs = {}
@@ -106,36 +109,26 @@ def computeConfidence(line):
     maxProb /= len(fields)/NBROFEXPFIELDS
     return(maxProb,maxClass)
 
-def selectConfidence(data):
+def selectConfidence(data,sampleSize):
     selected = []
     rest = []
-    duplicates = []
-    seen = {}
     counter = 0
     for line in data:
         counter += 1
         line["score"],line["class"] = computeConfidence(line)
-        if len(selected) >= HALFTARGET and \
+        if len(selected) >= halfTarget and \
            ((not reverse and line["score"] >= selected[-1]["score"]) or \
             (reverse and line["score"] <= selected[-1]["score"])):
             rest.append(line)
-        elif not line["data"] in seen:
+        else:
             selected.append(line)
-            seen[line["data"]] = True
             selected.sort(key=lambda item: item["score"],reverse=reverse)
-            while len(selected) > HALFTARGET:
+            while len(selected) > halfTarget:
                 element = selected.pop(-1)
                 rest.append(element)
-    while len(selected) < SAMPLESIZE and len(rest) > 0:
-        index = int(len(rest)*random.random())
-        if not rest[index]["data"] in seen:
-            selected.append(rest[index])
-            seen[rest[index]["data"]] = True
-        else: duplicates.append(rest[index])
-        rest[index] = rest[-1]
-        rest.pop(-1)
-    if len(selected) < SAMPLESIZE: sys.exit(COMMAND+": selectConfidence(): out of data!\n")
-    return({"selected":selected,"rest":rest+duplicates})
+    randomHalf = selectRandom(rest,sampleSize-halfTarget)
+    selected.extend(randomHalf["selected"])
+    return({"selected":selected,"rest":randomHalf["rest"]})
 
 def computeEntropyBest(line):
     total = 0
@@ -158,34 +151,24 @@ def computeEntropyBest(line):
     if not reverse: return(entropy*similarity) 
     else: return(entropy/similarity)
 
-def selectEntropyBest(data):
+def selectEntropyBest(data,sampleSize):
     selected = []
     rest = []
-    duplicates = []
-    seen = {}
     for line in data:
         line["score"] = computeEntropyBest(line)
-        if len(selected) >= HALFTARGET and \
+        if len(selected) >= halfTarget and \
            ((not reverse and line["score"] <= selected[-1]["score"]) or
             (reverse and line["score"] >= selected[-1]["score"])):
             rest.append(line)
-        elif not line["data"] in seen:
+        else:
             selected.append(line)
-            seen[line["data"]] = True
             selected.sort(key=lambda item: item["score"],reverse=not reverse)
-            while len(selected) > HALFTARGET:
+            while len(selected) > halfTarget:
                 element = selected.pop(-1)
                 rest.append(element)
-    while len(selected) < SAMPLESIZE and len(rest) > 0:
-        index = int(len(rest)*random.random())
-        if not rest[index]["data"] in seen:
-            selected.append(rest[index])
-            seen[rest[index]["data"]] = True
-        else: duplicates.append(rest[index])
-        rest[index] = rest[-1]
-        rest.pop(-1)
-    if len(selected) < SAMPLESIZE: sys.exit(COMMAND+": selectEntropyBest(): out of data!\n")
-    return({"selected":selected,"rest":rest+duplicates})
+    randomHalf = selectRandom(rest,sampleSize-halfTarget)
+    selected.extend(randomHalf["selected"])
+    return({"selected":selected,"rest":randomHalf["rest"]})
 
 def computeEntropyAll(line):
     total = 0
@@ -208,41 +191,31 @@ def computeEntropyAll(line):
     if not reverse: return(entropy*similarity) 
     else: return(entropy/similarity)
 
-def selectEntropyAll(data):
+def selectEntropyAll(data,sampleSize):
     selected = []
     rest = []
-    duplicates = []
-    seen = {}
     for line in data:
         line["score"] = computeEntropyAll(line)
-        if len(selected) >= HALFTARGET and \
+        if len(selected) >= halfTarget and \
            ((not reverse and line["score"] <= selected[-1]["score"]) or
             (reverse and line["score"] >= selected[-1]["score"])):
             rest.append(line)
-        elif not line["data"] in seen:
+        else:
             selected.append(line)
-            seen[line["data"]] = True
             selected.sort(key=lambda item: item["score"],reverse=not reverse)
-            while len(selected) > HALFTARGET:
+            while len(selected) > halfTarget:
                 element = selected.pop(-1)
                 rest.append(element)
-    while len(selected) < SAMPLESIZE and len(rest) > 0:
-        index = int(len(rest)*random.random())
-        if not rest[index]["data"] in seen:
-            selected.append(rest[index])
-            seen[rest[index]["data"]] = True
-        else: duplicates.append(rest[index])
-        rest[index] = rest[-1]
-        rest.pop(-1)
-    if len(selected) < SAMPLESIZE: sys.exit(COMMAND+": selectEntropyAll(): out of data!\n")
-    return({"selected":selected,"rest":rest+duplicates})
+    randomHalf = selectRandom(rest,sampleSize-halfTarget)
+    selected.extend(randomHalf["selected"])
+    return({"selected":selected,"rest":randomHalf["rest"]})
 
 def computeMargin(line):
     classes = {}
     similarity = 1.0
     if "similarity" in line: similarity = line["similarity"]
     fields = line["scores"].split()
-    if len(fields) <= 0: sys.exit(COMMAND+": selectMargin: missing score\n")
+    if len(fields) <= 0: sys.exit(COMMAND+": computeMargin: missing score\n")
     # fields format: exp1-label1 exp1-conf1 ... exp1-label12 exp1-conf12 exp2-label1
     for i in range(0,len(fields),2):
         if i+1 >= len(fields): sys.exit(COMMAND+": computeMargin: too few elements in fields: "+str(fields))
@@ -257,96 +230,68 @@ def computeMargin(line):
     if not reverse: return(margin*similarity) 
     else: return(margin/similarity)
 
-def selectMargin(data):
+def selectMargin(data,sampleSize):
     selected = []
     rest = []
-    duplicates = []
-    seen = {}
     for line in data:
         line["score"] = computeMargin(line)
-        if len(selected) >= HALFTARGET and \
+        if len(selected) >= halfTarget and \
            ((not reverse and line["score"] <= selected[-1]["score"]) or
             (reverse and line["score"] >= selected[-1]["score"])):
             rest.append(line)
-        elif not line["data"] in seen:
+        else:
             selected.append(line)
-            seen[line["data"]] = True
             selected.sort(key=lambda item: item["score"],reverse=not reverse)
-            while len(selected) > HALFTARGET:
+            while len(selected) > halfTarget:
                 element = selected.pop(-1)
                 rest.append(element)
-    while len(selected) < SAMPLESIZE and len(rest) > 0:
-        index = int(len(rest)*random.random())
-        if not rest[index]["data"] in seen:
-            selected.append(rest[index])
-            seen[rest[index]["data"]] = True
-        else: duplicates.append(rest[index])
-        rest[index] = rest[-1]
-        rest.pop(-1)
-    if len(selected) < SAMPLESIZE: sys.exit(COMMAND+": selectMargin(): out of data!\n")
-    return({"selected":selected,"rest":rest+duplicates})
+    randomHalf = selectRandom(rest,sampleSize-halfTarget)
+    selected.extend(randomHalf["selected"])
+    return({"selected":selected,"rest":randomHalf["rest"]})
 
-def selectLength(data):
+def selectLength(data,sampleSize):
     selected = []
     rest = []
-    duplicates = []
-    seen = {}
     for line in data:
         line["score"] = float(len(line["data"]))
         if "similarity" in line:
             if not reverse: line["score"] *= line["similarity"]
             else: line["score"] /= line["similarity"]
-        if len(selected) >= HALFTARGET and \
+        if len(selected) >= halfTarget and \
            ((not reverse and line["score"] <= selected[-1]["score"]) or \
             (reverse and line["score"] >= selected[-1]["score"])):
             rest.append(line)
-        elif not line["data"] in seen:
+        else:
             selected.append(line)
             seen[line["data"]] = True
             selected.sort(key=lambda item: item["score"],reverse=not reverse)
-            while len(selected) > HALFTARGET:
+            while len(selected) > halfTarget:
                 element = selected.pop(-1)
                 rest.append(element)
-    while len(selected) < SAMPLESIZE and len(rest) > 0:
-        index = int(len(rest)*random.random())
-        if not rest[index]["data"] in seen:
-            selected.append(rest[index])
-            seen[rest[index]["data"]] = True
-        else: duplicates.append(rest[index])
-        rest[index] = rest[-1]
-        rest.pop(-1)
-    if len(selected) < SAMPLESIZE: sys.exit(COMMAND+": selectLength(): out of data!\n")
-    return({"selected":selected,"rest":rest+duplicates})
+    randomHalf = selectRandom(rest,sampleSize-halfTarget)
+    selected.extend(randomHalf["selected"])
+    return({"selected":selected,"rest":randomHalf["rest"]})
 
-def selectSimilarity(data):
+def selectSimilarity(data,sampleSize):
     selected = []
     rest = []
-    duplicates = []
-    seen = {}
     for line in data:
         if not "similarity" in line: line["score"] = 1.0
         else: line["score"] = line["similarity"]
-        if len(selected) >= HALFTARGET and \
+        if len(selected) >= halfTarget and \
            ((not reverse and line["score"] <= selected[-1]["score"]) or \
             (reverse and line["score"] >= selected[-1]["score"])):
             rest.append(line)
-        elif not line["data"] in seen:
+        else:
             selected.append(line)
             seen[line["data"]] = True
             selected.sort(key=lambda item: item["score"],reverse=not reverse)
-            while len(selected) > HALFTARGET:
+            while len(selected) > halfTarget:
                 element = selected.pop(-1)
                 rest.append(element)
-    while len(selected) < SAMPLESIZE and len(rest) > 0:
-        index = int(len(rest)*random.random())
-        if not rest[index]["data"] in seen:
-            selected.append(rest[index])
-            seen[rest[index]["data"]] = True
-        else: duplicates.append(rest[index])
-        rest[index] = rest[-1]
-        rest.pop(-1)
-    if len(selected) < SAMPLESIZE: sys.exit(COMMAND+": selectSimilarity(): out of data!\n")
-    return({"selected":selected,"rest":rest+duplicates})
+    randomHalf = selectRandom(rest,sampleSize-halfTarget)
+    selected.extend(randomHalf["selected"])
+    return({"selected":selected,"rest":randomHalf["rest"]})
 
 ### main
 
@@ -359,6 +304,7 @@ if simFile != "":
    try: simStream = open(simFile,"r")
    except: sys.exit(COMMAND+": cannot read file "+simFile+"\n")
 
+seen = {}
 for dataLine in dataStream:
     dataLine = dataLine.rstrip()
     line = { "data":dataLine }
@@ -373,7 +319,9 @@ for dataLine in dataStream:
         simLine = simLine.rstrip()
         try: line["similarity"] = float(simLine)
         except: sys.exit(COMMAND+": "+simLine+" is not a number")
-    data.append(line)
+    if not dataLine in seen:
+        data.append(line)
+        seen[dataLine] = True
 if probFile != "": probStream.close()
 dataLine = dataStream.readline()
 dataStream.close()
@@ -383,14 +331,14 @@ if simFile != "":
     simStream.close()
     if simLine != "": sys.exit(COMMAND+": too many lines in sim file "+simFile)
 
-if useRandom: selectResults = selectRandom(data)
-elif useConfidence: selectResults = selectConfidence(data)
-elif useEntropyBest: selectResults = selectEntropyBest(data)
-elif useEntropyAll: selectResults = selectEntropyAll(data)
-elif useLength: selectResults = selectLength(data)
-elif useMargin: selectResults = selectMargin(data)
-elif useSimilarity: selectResults = selectSimilarity(data)
-else: selectResults = selectRandom(data)
+if useRandom: selectResults = selectRandom(data,sampleSize)
+elif useConfidence: selectResults = selectConfidence(data,sampleSize)
+elif useEntropyBest: selectResults = selectEntropyBest(data,sampleSize)
+elif useEntropyAll: selectResults = selectEntropyAll(data,sampleSize)
+elif useLength: selectResults = selectLength(data,sampleSize)
+elif useMargin: selectResults = selectMargin(data,sampleSize)
+elif useSimilarity: selectResults = selectSimilarity(data,sampleSize)
+else: selectResults = selectRandom(data,sampleSize)
 
 for line in selectResults["selected"]:
     if printScore: print("%0.3f" % (line["score"]),end=" ")

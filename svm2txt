@@ -1,0 +1,35 @@
+#!/usr/bin/python3 -Wall
+# svm2txt: convert svm files to binary training files for fasttext
+# usage: svm2txt label < file
+# notes: multi labels will be removed in favor of argument label vs non-label
+#        data source: http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multilabel.html#rcv1v2%20(topics;%20subsets)
+# 20170818 erikt(at)xs4all.nl
+
+import getopt
+import re
+import sys
+
+COMMAND = sys.argv.pop(0)
+USAGE = "usage: "+COMMAND+" label < file"
+
+try: options = getopt.getopt(sys.argv,"",[])
+except: sys.exit(USAGE)
+if len(options[1]) < 1: sys.exit(USAGE)
+label = options[1].pop(0)
+
+patternColon = re.compile(":.*$")
+for line in sys.stdin:
+    line = line.rstrip()
+    fields = line.split()
+    if len(fields) > 0:
+        labels = fields.pop(0).split(",")
+        labelSeen = False
+        for i in range(0,len(labels)):
+            if labels[i] == label: labelSeen = True
+        if labelSeen: print("__label__YES="+label,end="")
+        else: print("__label__NO="+label,end="")
+        for i in range(0,len(fields)):
+            fields[i] = patternColon.sub("",fields[i])
+            print(" "+fields[i],end="")
+        print("")
+
