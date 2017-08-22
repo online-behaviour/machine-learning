@@ -17,6 +17,7 @@
     -x: print score in output before each line
     -z: size of output in lines
     -h: do not fill up half of the output with random samples
+    -e number of fields per experiment in probabilities file (default: 2*12)
     20170718 erikt(at)xs4all.nl
 """
 
@@ -26,8 +27,8 @@ import random
 import sys
 
 COMMAND = sys.argv.pop(0)
-USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-l|-m|-E|-S] [-R] [-a] [-s simFile] [-x] [-z size]"
-NBROFEXPFIELDS = 24
+USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-l|-m|-E|-S] [-R] [-a] [-s simFile] [-x] [-z size] [-e nbrOfFields]"
+nbrOfExpFields = 24
 sampleSize = 5503
 dataFile = ""
 probFile = ""
@@ -44,7 +45,7 @@ randomHalfSample = True
 simFile = ""
 data = []
 
-try: options = getopt.getopt(sys.argv,"acd:eEhlmp:rRs:Sxz:",[])
+try: options = getopt.getopt(sys.argv,"acd:e:Ehlmp:rRs:Sxz:",[])
 except: sys.exit(USAGE)
 nbrOfMethods = 0
 for option in options[0]:
@@ -62,6 +63,7 @@ for option in options[0]:
     elif option[0] == "-x": printScore = True
     elif option[0] == "-z": sampleSize = int(option[1])
     elif option[0] == "-h": randomHalfSample = False
+    elif option[0] == "-e": nbrOfExpFields = int(option[1])
     else: sys.exit(USAGE)
 if dataFile == "": sys.exit(USAGE)
 if probFile == ""  and \
@@ -91,7 +93,7 @@ def getProbs(line):
         thisClass, value = fields[i], fields[i+1]
         if thisClass in probs: probs[thisClass] += float(value)
         else: probs[thisClass] = float(value)
-    for c in probs: probs[c] /= len(fields)/NBROFEXPFIELDS
+    for c in probs: probs[c] /= len(fields)/nbrOfExpFields
     return(probs)
 
 def computeConfidence(line):
