@@ -21,14 +21,22 @@ with sys.stdout as csvfile:
     for line in sys.stdin:
         # convert the line to a json dictionary
         jsonLine = json.loads(line)
-        # the json dictionary should contain a text and a language token: nl (Dutch)
-        if "text" in jsonLine and "id_str" in jsonLine and \
-            "user" in jsonLine and "screen_name" in jsonLine["user"] and \
-            "lang" in jsonLine and jsonLine["lang"] == "nl":
-            # print the text is csv format
-            thisId = jsonLine["id_str"].encode("utf-8")
-            screenName = jsonLine["user"]["screen_name"].encode("utf-8")
-            text = jsonLine["text"].encode("utf-8")
-            text = patternNewline.sub(" ",text)
-            outFile.writerow([thisId,screenName,text])
+        # test for presence of required fields
+        if not "id_str" in jsonLine: sys.exit(COMMAND+" missing id_str field")
+        if not "text" in jsonLine: sys.exit(COMMAND+" missing text field")
+        if not "user" in jsonLine: sys.exit(COMMAND+" missing user field")
+        if not "screen_name" in jsonLine["user"]:
+            sys.exit(COMMAND+" missing screen_name field")
+        if not "in_reply_to_status_id_str" in jsonLine: 
+            sys.exit(COMMAND+" missing in_reply_to_status_id_str field")
+        # print the text in csv format
+        thisId = jsonLine["id_str"].encode("utf-8")
+        replyId = jsonLine["in_reply_to_status_id_str"]
+        if replyId == None and "retweeted_status" in jsonLine and \
+           "in_reply_to_status_id_str" in jsonLine["retweeted_status"]:
+            replyId = jsonLine["retweeted_status"]["in_reply_to_status_id_str"]
+        screenName = jsonLine["user"]["screen_name"].encode("utf-8")
+        text = jsonLine["text"].encode("utf-8")
+        text = patternNewline.sub(" ",text)
+        outFile.writerow([thisId,replyId,screenName,text])
     csvfile.close()
