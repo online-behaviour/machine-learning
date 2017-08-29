@@ -246,14 +246,16 @@ if simFile != "":
    except: sys.exit(COMMAND+": cannot read file "+simFile+"\n")
 
 seen = {}
+probsSeen = False
 for dataLine in dataStream:
     dataLine = dataLine.rstrip()
     line = { "data":dataLine }
     if probFile != "":
         probLine = probStream.readline()
-        if probLine == "": sys.exit(COMMAND+": too few lines in prob file "+probFile)
-        probLine = probLine.rstrip()
-        line["scores"] = probLine
+        if probLine != "": 
+           probLine = probLine.rstrip()
+           line["scores"] = probLine
+           probsSeen = True
     if simFile != "":
         simLine = simStream.readline()
         if simLine == "": sys.exit(COMMAND+": too few lines in similarity file "+simFile)
@@ -273,10 +275,10 @@ if simFile != "":
     if simLine != "": sys.exit(COMMAND+": too many lines in sim file "+simFile)
 
 if useRandom: selectResults = selectRandom(data,sampleSize)
-elif useConfidence: selectResults = selectConfidence(data,sampleSize)
-elif useEntropyAll: selectResults = selectEntropyAll(data,sampleSize)
 elif useLength: selectResults = selectLength(data,sampleSize)
-elif useMargin: selectResults = selectMargin(data,sampleSize)
+elif useMargin and probsSeen: selectResults = selectMargin(data,sampleSize)
+elif useConfidence and probsSeen: selectResults = selectConfidence(data,sampleSize)
+elif useEntropyAll and probsSeen: selectResults = selectEntropyAll(data,sampleSize)
 elif useSimilarity: selectResults = selectSimilarity(data,sampleSize)
 else: selectResults = selectRandom(data,sampleSize)
 

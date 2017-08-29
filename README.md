@@ -24,8 +24,22 @@ stored in the data format
 [JSON](https://en.wikipedia.org/wiki/JSON). The command may
 require several minutes to complete. 
 
-The script needs your Twitter account data to be stored in a
-file definitions.py in the format:
+The script needs two things to run:
+
+First: you will need to install the Twitter package from:
+[https://github.com/sixohsix/twitter](https://github.com/sixohsix/twitter)
+The commands for this on Linux and MacOSX are:
+
+```
+git clone https://github.com/sixohsix/twitter
+cd twitter
+python setup.py build
+sudo python setup.py install
+```
+
+Second: you need to store your Twitter account data in a file named
+"definitions.py" in the same directory as getTweetsUser.py. The file
+should contain the following lines:
 
 ```
 # twitter.com authentication keys
