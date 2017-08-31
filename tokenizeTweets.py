@@ -36,7 +36,7 @@ def readData(tweetColumn,fileHasHeading):
         # ignore first line if it is a heading
         if lineNbr == 1 and fileHasHeading: continue
         # tokenize text
-        tokenized = naiveBayes.tokenize([row[tweetColumn]])
+        tokenized = naiveBayes.tokenize([row[tweetColumn]],False)
         # print tokenized text
         for i in range(0,len(tokenized)):
             outLine = ""
