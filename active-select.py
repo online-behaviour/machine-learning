@@ -17,7 +17,9 @@
     -x: print score in output before each line
     -z: size of output in lines
     -h: do not fill up half of the output with random samples
-    -e number of fields per experiment in probabilities file (default: 2*12)
+    -e: number of fields per experiment in probabilities file (default: 2*12)
+    -t: select by time: oldest first 
+    -D: do not delete duplicate tweets (default: delete)
     20170718 erikt(at)xs4all.nl
 """
 
@@ -27,7 +29,7 @@ import random
 import sys
 
 COMMAND = sys.argv.pop(0)
-USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-l|-m|-E|-S] [-R] [-a] [-s simFile] [-x] [-z size] [-e nbrOfFields]"
+USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-l|-m|-E|-S|-t] [-R] [-a] [-s simFile] [-x] [-z size] [-e nbrOfFields] -D"
 nbrOfExpFields = 24
 sampleSize = 5503
 dataFile = ""
@@ -39,13 +41,15 @@ useConfidence = False
 useLength = False
 useEntropyAll= False
 useSimilarity= False
+useTime = False
 outputAll = False
 printScore = False
 randomHalfSample = True
+deleteDuplicates = True
 simFile = ""
 data = []
 
-try: options = getopt.getopt(sys.argv,"acd:e:Ehlmp:rRs:Sxz:",[])
+try: options = getopt.getopt(sys.argv,"acd:e:Ehlmp:rRs:Stxz:",[])
 except: sys.exit(USAGE)
 nbrOfMethods = 0
 for option in options[0]:
@@ -56,6 +60,7 @@ for option in options[0]:
     elif option[0] == "-r": useRandom = True; nbrOfMethods += 1
     elif option[0] == "-l": useLength = True; nbrOfMethods += 1
     elif option[0] == "-m": useMargin = True; nbrOfMethods += 1
+    elif option[0] == "-t": useTime = True; nbrOfMethods += 1
     elif option[0] == "-R": reverse = True
     elif option[0] == "-a": outputAll = True
     elif option[0] == "-s": simFile = option[1]
@@ -64,6 +69,7 @@ for option in options[0]:
     elif option[0] == "-z": sampleSize = int(option[1])
     elif option[0] == "-h": randomHalfSample = False
     elif option[0] == "-e": nbrOfExpFields = int(option[1])
+    elif option[0] == "-D": deleteDuplicates = False
     else: sys.exit(USAGE)
 if dataFile == "": sys.exit(USAGE)
 if probFile == ""  and \
@@ -71,6 +77,18 @@ if probFile == ""  and \
 if nbrOfMethods > 1: sys.exit(COMMAND+": multiple selection methods chosen!")
 if randomHalfSample: halfTarget = int(float(sampleSize)/2.0)
 else: halfTarget = sampleSize
+
+def selectTime(data,sampleSize):
+    selected = []
+    while len(selected) < sampleSize and len(data) > 0:
+        if reverse: index = -1
+        else: index = 0
+        data[index]["score"] = 1.0
+        selected.append(data[index])
+        data.pop(index)
+    if len(selected) < sampleSize:
+        sys.exit(COMMAND+": selectTime(): too few data!\n")
+    return({"selected":selected,"rest":data})
 
 def selectRandom(data,sampleSize):
     selected = []
@@ -262,7 +280,7 @@ for dataLine in dataStream:
         simLine = simLine.rstrip()
         try: line["similarity"] = float(simLine)
         except: sys.exit(COMMAND+": "+simLine+" is not a number")
-    if not dataLine in seen:
+    if not dataLine in seen or not deleteDuplicates:
         data.append(line)
         seen[dataLine] = True
 if probFile != "": probStream.close()
@@ -275,6 +293,7 @@ if simFile != "":
     if simLine != "": sys.exit(COMMAND+": too many lines in sim file "+simFile)
 
 if useRandom: selectResults = selectRandom(data,sampleSize)
+elif useTime: selectResults = selectTime(data,sampleSize)
 elif useLength: selectResults = selectLength(data,sampleSize)
 elif useMargin and probsSeen: selectResults = selectMargin(data,sampleSize)
 elif useConfidence and probsSeen: selectResults = selectConfidence(data,sampleSize)
