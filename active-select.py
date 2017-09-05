@@ -1,14 +1,14 @@
 #!/usr/bin/python3 -W all
 """
     select-active.py: select training lines for active learning
-    usage: select-active.py -d dataFile -p probFile [-c|-r|-l|-m|-E|-S] [-R] [-a] [-s simFile] [-x]
+    usage: select-active.py -d dataFile -p probFile [-c|-r|-l|-m|-e|-S] [-R] [-a] [-s simFile] [-x]
     note: command line arguments:
     -d: data file, lines correspond with those of the probabilities file
     -p: file with probabilities; line format: class1 prob1 class2 prob2 ...
     -c: select 50% of the data based on confidence; rest at random
     -m: select data by margin  between best and second best label
     -r: select data randomly
-    -E: select data by entropy of all classes
+    -e: select data by entropy of all classes
     -l: select longest lengths in characters
     -S: select highest similarity
     -R: reverse selection: not the worst but the best
@@ -17,7 +17,6 @@
     -x: print score in output before each line
     -z: size of output in lines
     -h: do not fill up half of the output with random samples
-    -e: number of fields per experiment in probabilities file (default: 2*12)
     -t: select by time: oldest first 
     -D: do not delete duplicate tweets (default: delete)
     20170718 erikt(at)xs4all.nl
@@ -29,8 +28,7 @@ import random
 import sys
 
 COMMAND = sys.argv.pop(0)
-USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-l|-m|-E|-S|-t] [-R] [-a] [-s simFile] [-x] [-z size] [-e nbrOfFields] -D"
-nbrOfExpFields = 24
+USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-l|-m|-e|-S|-t] [-R] [-a] [-s simFile] [-x] [-z size] -D"
 sampleSize = 5503
 dataFile = ""
 probFile = ""
@@ -49,13 +47,13 @@ deleteDuplicates = True
 simFile = ""
 data = []
 
-try: options = getopt.getopt(sys.argv,"acd:e:Ehlmp:rRs:Stxz:",[])
+try: options = getopt.getopt(sys.argv,"acd:ehlmp:rRs:Stxz:",[])
 except: sys.exit(USAGE)
 nbrOfMethods = 0
 for option in options[0]:
     if option[0] == "-c": useConfidence = True
     elif option[0] == "-d": dataFile = option[1]
-    elif option[0] == "-E": useEntropyAll = True; nbrOfMethods += 1
+    elif option[0] == "-e": useEntropyAll = True; nbrOfMethods += 1
     elif option[0] == "-p": probFile = option[1]
     elif option[0] == "-r": useRandom = True; nbrOfMethods += 1
     elif option[0] == "-l": useLength = True; nbrOfMethods += 1
@@ -68,7 +66,6 @@ for option in options[0]:
     elif option[0] == "-x": printScore = True
     elif option[0] == "-z": sampleSize = int(option[1])
     elif option[0] == "-h": randomHalfSample = False
-    elif option[0] == "-e": nbrOfExpFields = int(option[1])
     elif option[0] == "-D": deleteDuplicates = False
     else: sys.exit(USAGE)
 if dataFile == "": sys.exit(USAGE)
@@ -103,15 +100,22 @@ def selectRandom(data,sampleSize):
 
 def getProbs(line):
     probs = {}
+    counts = {}
     # fields format: exp1-label1 exp1-conf1 ... exp1-label12 exp1-conf12 exp2-label1
     fields = line["scores"].split()
     if len(fields) <= 0: sys.exit(COMMAND+": getProbs: empty list: fields")
+    if len(fields) < 3: sys.exit(COMMAND+\
+        ": getProbs: unexpected number of probabilities on line: "+str(len(fields)))
     for i in range(0,len(fields),2):
         if len(fields) < i+2: sys.exit(COMMAND+": incomplete line: "+str(fields))
         thisClass, value = fields[i], fields[i+1]
-        if thisClass in probs: probs[thisClass] += float(value)
-        else: probs[thisClass] = float(value)
-    for c in probs: probs[c] /= len(fields)/nbrOfExpFields
+        if thisClass in probs:
+            probs[thisClass] += float(value)
+            counts[thisClass] += 1
+        else:
+            probs[thisClass] = float(value)
+            counts[thisClass] = 1
+    for c in probs: probs[c] /= len(fields)/counts[thisClass]
     return(probs)
 
 def computeConfidence(line):
