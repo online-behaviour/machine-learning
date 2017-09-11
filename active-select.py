@@ -19,6 +19,7 @@
     -h: do not fill up half of the output with random samples
     -t: select by time: oldest first 
     -D: do not delete duplicate tweets (default: delete)
+    -w: in random selection leave replace the selected data in the source
     20170718 erikt(at)xs4all.nl
 """
 
@@ -28,7 +29,8 @@ import random
 import sys
 
 COMMAND = sys.argv.pop(0)
-USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-l|-m|-e|-S|-t] [-R] [-a] [-s simFile] [-x] [-z size] -D"
+USAGE = "usage: "+COMMAND+" -p probFile -d dataFile [-c|-r|-l|-m|-e|-S|-t] [-R] [-a] [-s simFile] [-x] [-z size] -D -w"
+EXPERIMENTSEPARATOR = "#"
 sampleSize = 5503
 dataFile = ""
 probFile = ""
@@ -44,10 +46,11 @@ outputAll = False
 printScore = False
 randomHalfSample = True
 deleteDuplicates = True
+randomWithReplacement = False
 simFile = ""
 data = []
 
-try: options = getopt.getopt(sys.argv,"acd:ehlmp:rRs:Stxz:",[])
+try: options = getopt.getopt(sys.argv,"acd:ehlmp:rRs:Stxwz:",[])
 except: sys.exit(USAGE)
 nbrOfMethods = 0
 for option in options[0]:
@@ -67,6 +70,7 @@ for option in options[0]:
     elif option[0] == "-z": sampleSize = int(option[1])
     elif option[0] == "-h": randomHalfSample = False
     elif option[0] == "-D": deleteDuplicates = False
+    elif option[0] == "-w": randomWithReplacement = True
     else: sys.exit(USAGE)
 if dataFile == "": sys.exit(USAGE)
 if probFile == ""  and \
@@ -93,29 +97,29 @@ def selectRandom(data,sampleSize):
         index = int(len(data)*random.random())
         data[index]["score"] = 1.0
         selected.append(data[index])
-        data.pop(index)
+        if not randomWithReplacement: data.pop(index)
     if len(selected) < sampleSize: 
         sys.exit(COMMAND+": selectRandom(): too few data!\n")
     return({"selected":selected,"rest":data})
 
 def getProbs(line):
     probs = {}
-    counts = {}
+    nbrOfExps = 1
     # fields format: exp1-label1 exp1-conf1 ... exp1-label12 exp1-conf12 exp2-label1
     fields = line["scores"].split()
     if len(fields) <= 0: sys.exit(COMMAND+": getProbs: empty list: fields")
     if len(fields) < 3: sys.exit(COMMAND+\
         ": getProbs: unexpected number of probabilities on line: "+str(len(fields)))
-    for i in range(0,len(fields),2):
-        if len(fields) < i+2: sys.exit(COMMAND+": incomplete line: "+str(fields))
-        thisClass, value = fields[i], fields[i+1]
-        if thisClass in probs:
-            probs[thisClass] += float(value)
-            counts[thisClass] += 1
+    i = 0
+    while i < len(fields):
+        if fields[i] == EXPERIMENTSEPARATOR: nbrOfExps += 1; i += 1
         else:
-            probs[thisClass] = float(value)
-            counts[thisClass] = 1
-    for c in probs: probs[c] /= len(fields)/counts[thisClass]
+            if len(fields) < i+2: sys.exit(COMMAND+": incomplete line ("+str(i)+"): "+str(fields))
+            thisClass, value = fields[i], fields[i+1]
+            if thisClass in probs: probs[thisClass] += 1.0
+            else: probs[thisClass] = 1.0
+            i += 2
+    for c in probs: probs[c] /= nbrOfExps
     return(probs)
 
 def computeConfidence(line):

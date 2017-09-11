@@ -5,12 +5,14 @@
 
 COMMAND="$0"
 REVERSE=""
-BATCHSIZE1=5500
-BATCHSIZE2=550
+BATCHSIZE1=$1
+BATCHSIZE2=$2
+EXP=$3
+if [ "$3" == "" ]; then echo usage: run batchsize1 batchsize2 exp >&2; exit 1; fi
 METHOD1="t"
 TRAIN=dutch-2012.train-dev.txt.replyto
 TEST=dutch-2012.dev.txt.replyto
-VECTORS=vectors-train-dev.vec
+VECTORS=vectors-train-dev-$EXP.vec
 TMPFILE=run.$$.$RANDOM
 TMPTRAIN=$TMPFILE.train
 TMPREST=$TMPFILE.rest
@@ -21,6 +23,22 @@ MINCOUNT=5
 NBROFCLASSES=12
 BINDIR=/home/cloud/projects/online-behaviour/machine-learning
 SELECT=$BINDIR/active-select.py
+
+function make-probs {
+   MAKEPROBSTRAIN=$1
+   MAKEPROBSREST=$2
+   MAKEPROBSTMP=run.makeprobs.$$.$RANDOM
+   TRAINSIZE=`cat $MAKEPROBSTRAIN|wc -l`
+   for i in {1..10}
+   do
+      $SELECT -d $MAKEPROBSTRAIN -z $TRAINSIZE -r -w > $MAKEPROBSTMP.train
+      ../fasttext supervised -input $MAKEPROBSTMP.train -output $MAKEPROBSTMP -dim $DIM \
+            -pretrainedVectors $VECTORS -minCount $MINCOUNT >/dev/null 2>/dev/null
+      ../fasttext predict-prob $MAKEPROBSTMP.bin $MAKEPROBSREST 1 > $MAKEPROBSTMP.probs.$i
+   done
+   paste -d'#' $MAKEPROBSTMP.probs.* | sed 's/#/ # /g'
+   rm -f $MAKEPROBSTMP.bin $MAKEPROBSTMP.vec $MAKEPROBSTMP.probs.* $MAKEPROBSTMP.train
+}
 
 function run-experiment {
    METHOD=$1
@@ -44,24 +62,27 @@ function run-experiment {
       if [ $i -gt 1 -o "$METHOD$REVERSE" == $METHOD1 ]; then
          ../fasttext supervised -input $TMPTRAIN -output $TMPFILE -dim $DIM \
             -pretrainedVectors $VECTORS -minCount $MINCOUNT >/dev/null 2>/dev/null
-         if [ $i == 1 -a "$METHOD$REVERSE" == $METHOD1 ]; then cp $TMPFILE.bin $TMPSTART.bin; fi
+         if [ $i == 1 -a "$METHOD$REVERSE" == $METHOD1 ]
+         then
+            cp $TMPTRAIN $TMPSTART.train
+            cp $TMPFILE.bin $TMPSTART.bin
+         fi
       else
          if [ ! -f $TMPSTART.bin ]; then echo $COMMAND: no start model>&2; fi
          cp $TMPSTART.bin $TMPFILE.bin
+         cp $TMPSTART.train $TMPTRAIN
       fi
       ../fasttext predict $TMPFILE.bin $TEST |\
          paste -d' ' -  $TEST | cut -d' ' -f1,2 | $BINDIR/eval.py | head -1 |\
          rev | sed 's/^ *//' | cut -d' ' -f1 | rev | sed 's/^/P@1\t/' |\
          sed "s/^/$METHOD$REVERSE $BATCHSIZE $TRAINSIZE /"
       if [ $METHOD != "r" -a $METHOD != "l" -a $METHOD != "t" ]; then
-         ../fasttext predict-prob $TMPFILE.bin $TMPREST $NBROFCLASSES > $TMPPROBS
+         make-probs $TMPTRAIN $TMPREST > $TMPPROBS
       fi
    done
 }
 
-#REVERSE="-R"
 run-experiment t # selection by earliest time
-REVERSE=""
 run-experiment r # random data selection
 run-experiment c # selection by least confidence
 run-experiment m # selection by smallest margin of confidence
@@ -70,6 +91,7 @@ run-experiment l # selection by highest entropy
 REVERSE="-R"
 run-experiment t # selection by latest time
 
-rm -f $TMPFILE $TMPFILE.??? $TMPFILE.???? $TMPFILE.????? $TMPSTART.bin
+rm -f $TMPFILE $TMPFILE.??? $TMPFILE.???? $TMPFILE.????? $TMPSTART.bin $TMPSTART.train
 
 exit 0
+
