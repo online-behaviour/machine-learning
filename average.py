@@ -16,14 +16,15 @@ interval95 = 1.96
 total = 0.0
 count = 0.0
 numbers = []
-patternIsNumber = re.compile("^[0-9]+(\.[0-9]+)?$")
 for line in sys.stdin:
     line = line.rstrip()
     fields = line.split()
     for n in fields:
-        if not patternIsNumber.match(n):
+        try:
+            nFloat = float(n)
+        except:
             sys.exit(COMMAND+": "+n+" is not a number\n")
-        total += float(n)
+        total += nFloat
         count += 1.0
         numbers.append(float(n))
 
