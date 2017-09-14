@@ -16,7 +16,7 @@
     -s: similarity file; line format: one float per line, one per data file item
     -x: print score in output before each line
     -z: size of output in lines
-    -h: do not fill up half of the output with random samples
+    -h: fill this fraction of the output with random samples (default 0.5)
     -t: select by time: oldest first 
     -D: do not delete duplicate tweets (default: delete)
     -w: in random selection leave replace the selected data in the source
@@ -44,13 +44,13 @@ useSimilarity= False
 useTime = False
 outputAll = False
 printScore = False
-randomHalfSample = True
+randomFraction = 0.5
 deleteDuplicates = True
 randomWithReplacement = False
 simFile = ""
 data = []
 
-try: options = getopt.getopt(sys.argv,"acd:ehlmp:rRs:Stxwz:",[])
+try: options = getopt.getopt(sys.argv,"acd:eh:lmp:rRs:Stxwz:",[])
 except: sys.exit(USAGE)
 nbrOfMethods = 0
 for option in options[0]:
@@ -68,7 +68,7 @@ for option in options[0]:
     elif option[0] == "-S": useSimilarity = True
     elif option[0] == "-x": printScore = True
     elif option[0] == "-z": sampleSize = int(option[1])
-    elif option[0] == "-h": randomHalfSample = False
+    elif option[0] == "-h": randomFraction = float(option[1])
     elif option[0] == "-D": deleteDuplicates = False
     elif option[0] == "-w": randomWithReplacement = True
     else: sys.exit(USAGE)
@@ -76,8 +76,10 @@ if dataFile == "": sys.exit(USAGE)
 if probFile == ""  and \
    (useEntropyAll or useMargin or useConfidence): sys.exit(USAGE)
 if nbrOfMethods > 1: sys.exit(COMMAND+": multiple selection methods chosen!")
-if randomHalfSample: halfTarget = int(float(sampleSize)/2.0)
-else: halfTarget = sampleSize
+if randomFraction >= 0 and randomFraction <= 1: 
+   halfTarget = (1.0-randomFraction)*float(sampleSize)
+else:
+   sysexit(COMMAND+": unexpected value for random fraction: "+str(randomFraction))
 
 def selectTime(data,sampleSize):
     selected = []

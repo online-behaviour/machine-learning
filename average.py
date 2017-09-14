@@ -26,6 +26,10 @@ for line in sys.stdin:
         total += float(n)
         count += 1.0
         numbers.append(float(n))
+
+if count <= 0.0:
+    sys.exit(COMMAND+": could not read any data!")
+
 average = total/count
 
 total = 0.0

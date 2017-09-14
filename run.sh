@@ -1,14 +1,17 @@
 #!/bin/bash
 # run: run active learning experiment
-# usage: run
+# usage: run batchsize1 batchsize2 exp [h]
 # 20170829 erikt(at)xs4all.nl
 
 COMMAND="$0"
 REVERSE=""
+MAKEPROBS=make-probs-learner
 BATCHSIZE1=$1
 BATCHSIZE2=$2
 EXP=$3
 if [ "$3" == "" ]; then echo usage: run batchsize1 batchsize2 exp >&2; exit 1; fi
+H=0.5
+if [ "$4" != "" ]; then H=$4; fi
 METHOD1="t"
 TRAIN=dutch-2012.train-dev.txt.replyto
 TEST=dutch-2012.dev.txt.replyto
@@ -24,20 +27,31 @@ NBROFCLASSES=12
 BINDIR=/home/cloud/projects/online-behaviour/machine-learning
 SELECT=$BINDIR/active-select.py
 
-function make-probs {
+function make-probs-bagging {
    MAKEPROBSTRAIN=$1
    MAKEPROBSREST=$2
    MAKEPROBSTMP=run.makeprobs.$$.$RANDOM
    TRAINSIZE=`cat $MAKEPROBSTRAIN|wc -l`
    for i in {1..10}
    do
-      $SELECT -d $MAKEPROBSTRAIN -z $TRAINSIZE -r -w > $MAKEPROBSTMP.train
+      $SELECT -d $MAKEPROBSTRAIN -z $TRAINSIZE -r -w -h $H > $MAKEPROBSTMP.train
       ../fasttext supervised -input $MAKEPROBSTMP.train -output $MAKEPROBSTMP -dim $DIM \
             -pretrainedVectors $VECTORS -minCount $MINCOUNT >/dev/null 2>/dev/null
       ../fasttext predict-prob $MAKEPROBSTMP.bin $MAKEPROBSREST 1 > $MAKEPROBSTMP.probs.$i
    done
    paste -d'#' $MAKEPROBSTMP.probs.* | sed 's/#/ # /g'
    rm -f $MAKEPROBSTMP.bin $MAKEPROBSTMP.vec $MAKEPROBSTMP.probs.* $MAKEPROBSTMP.train
+}
+
+function make-probs-learner {
+   MAKEPROBSTRAIN=$1
+   MAKEPROBSREST=$2
+   MAKEPROBSTMP=run.makeprobs.$$.$RANDOM
+   TRAINSIZE=`cat $MAKEPROBSTRAIN|wc -l`
+   ../fasttext supervised -input $MAKEPROBSTRAIN -output $MAKEPROBSTMP -dim $DIM \
+            -pretrainedVectors $VECTORS -minCount $MINCOUNT >/dev/null 2>/dev/null
+   ../fasttext predict-prob $MAKEPROBSTMP.bin $MAKEPROBSREST $NBROFCLASSES
+   rm -f $MAKEPROBSTMP.bin $MAKEPROBSTMP.vec
 }
 
 function run-experiment {
@@ -49,7 +63,7 @@ function run-experiment {
    do
       if [ $i == 1 ]; then BATCHSIZE=$BATCHSIZE1; else BATCHSIZE=$BATCHSIZE2; fi
       if [ $i -gt 1 -o "$METHOD$REVERSE" == $METHOD1 ]; then
-         $SELECT -d $TMPREST -p $TMPPROBS -z $BATCHSIZE -a -$METHOD $REVERSE > $TMPFILE
+         $SELECT -d $TMPREST -p $TMPPROBS -z $BATCHSIZE -a -$METHOD $REVERSE -h $H > $TMPFILE
          if [ ! -s $TMPFILE ]; then echo $0: $SELECT failed >&2; exit 1; fi
          if [ $i == 1 -a "$METHOD$REVERSE" == $METHOD1 ]; then cp $TMPFILE $TMPSTART; fi
       else
@@ -77,7 +91,7 @@ function run-experiment {
          rev | sed 's/^ *//' | cut -d' ' -f1 | rev | sed 's/^/P@1\t/' |\
          sed "s/^/$METHOD$REVERSE $BATCHSIZE $TRAINSIZE /"
       if [ $METHOD != "r" -a $METHOD != "l" -a $METHOD != "t" ]; then
-         make-probs $TMPTRAIN $TMPREST > $TMPPROBS
+         $MAKEPROBS $TMPTRAIN $TMPREST > $TMPPROBS
       fi
    done
 }
