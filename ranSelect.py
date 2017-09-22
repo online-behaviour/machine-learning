@@ -18,7 +18,7 @@ COMMAND = sys.argv.pop(0).split("/")[-1]
 #cgitb.enable(display=0, logdir="/tmp/"+COMMAND)
 cgitb.enable()
 DATADIR = "/home/cloud/projects/online-behaviour/machine-learning"
-DATAFILE = "getTweetsUser.out.1.text.active.1000" # "dutch-2012.csv.8.questionmark" # 13"
+DATAFILE = "active" # "dutch-2012.csv.8.questionmark" # 13"
 ANNOFILE = "ANNOTATIONS."+COMMAND
 # -1,6,0.991,7,0.901,674221988416720896,JoelVoordewind,Terecht zegt VdSteur dat daders moeten worden aangepakt na bedreigingen LHBTs en op voorspraak v CU vult hij aan ook christen-asielzoekers.
 IDCOLUMN = 5 # was 0
@@ -57,31 +57,31 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
     classes = [] # list with tweet classes
     id2index = {} # dictionary linking tweet ids to indexes
     fileName = DATADIR+"/"+DATAFILE
-    with open(fileName,"r") as csvfile:
-        csvreader = csv.reader(csvfile,delimiter=',',quotechar='"')
-        lineNbr = 0
-        for row in csvreader:
-            lineNbr += 1
-            # ignore first line if it is a heading
-            if lineNbr == 1 and fileHasHeading: continue
-            thisId = row[idColumn]
-            thisClass = row[classColumn]
-            # only keep unannotated tweets and the last one that was annotated
-            if (not thisId in processed or thisId == lastProcessed) and \
-               (not annotate8 or thisClass == "8"):
-                # add tweet text to list
-                text.append(row[tweetColumn])
-                # add tweet text to list
-                users.append(row[userColumn])
-                # add tweet class to list
-                classes.append(row[classColumn])
-                # add reply id to list (if any)
-                replies.append(row[replyColumn])
-                # link tweet id with list index
-                id2index[row[idColumn]] = len(ids)
-                # add tweet id to list
-                ids.append(row[idColumn])
-        csvfile.close()
+    inFile = open(fileName,"r")
+    lineNbr = 0
+    for line in inFile:
+        lineNbr += 1
+        thisId = str(lineNbr)
+        line = line.rstrip()
+        fields = line.split()
+        thisClass = fields.pop(0)
+        line = " ".join(fields)
+        # only keep unannotated tweets and the last one that was annotated
+        if (not thisId in processed or thisId == lastProcessed) and \
+           (not annotate8 or thisClass == "__label__8"):
+           # add tweet text to list
+           text.append(line)
+           # add user to list
+           users.append("UNKNOWN")
+           # add tweet class to list
+           classes.append(thisClass)
+           # add reply id to list (if any)
+           replies.append("UNKNOWN")
+           # link tweet id with list index
+           id2index[thisId] = len(ids)
+           # add tweet id to list
+           ids.append(thisId)
+    inFile.close()
     # return results
     return({"text":text, "classes":classes, "ids":ids, "replies":replies, "users":users, "id2index":id2index})
 
@@ -121,6 +121,8 @@ readDataResults = readData(IDCOLUMN,TWEETCOLUMN,RETWEETCOLUMN,CLASSCOLUMN,USERCO
 # process the cgi data if any
 form = cgi.FieldStorage()
 if "id" in form:
+    tmp1 = form["id"].value
+    tmp2 = readDataResults["id2index"][tmp1]
     goldClass = readDataResults["classes"][readDataResults["id2index"][form["id"].value]]
     annotatedClass = form["class"].value
     tweet = readDataResults["text"][readDataResults["id2index"][form["id"].value]]
@@ -130,16 +132,22 @@ if "id" in form:
     thisId = form["id"].value
     if "ANNOTATE8" in form.keys(): annotate8 = True
     else: annotate8 = False
-    if annotatedClass == goldClass: 
-        print "<font color=\"green\">"
-        correct += 1
-    else:
-        print "<font color=\"red\">"
-        wrong += 1
+    if goldClass != "__label__None":
+        if "__label__"+annotatedClass == goldClass: 
+            print "<font color=\"green\">"
+            correct += 1
+        else:
+            if goldClass != "__label__None": print "<font color=\"red\">"
+            wrong += 1
     processed[thisId] = True
-    contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+user+"/status/"+thisId+"\">context</a>"
-    print "<div style=\"height:30px\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClass,tweet,contextLink)
-    print "</font>\n"
+    #contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+user+"/status/"+thisId+"\">context</a>"
+    contextLink = ""
+    fields = tweet.split("REPLYTO")
+    fields = fields[::-1]
+    if fields[0] == "": fields[0] = "???"
+    if len(fields) > 0: tweet = "<br><strong>REPLY</strong> ".join(fields)
+    print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClass,tweet,contextLink)
+    if goldClass != "__label__None": print "</font>\n"
     if correct+wrong > 0:
         print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
     print "<hr>"
@@ -179,9 +187,15 @@ if len(replyTexts) > 0:
         for j in range(i,len(replyTexts)): print "&nbsp;&nbsp;&nbsp;"
         print replyTexts[i]
     print "</div>"
-contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+readDataResults["users"][index]+"/status/"+readDataResults["ids"][index]+"\">context</a>"
+# contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+str(readDataResults["users"][index])+"/status/"+str(readDataResults["ids"][index])+"\">context</a>"
+contextLink = ""
 # show tweet
-sys.stdout.write("<div style=\"height:30px\">"+str(1+len(processed))+": ")
+fields = readDataResults["text"][index] .split("REPLYTO")
+fields = fields[::-1]
+if fields[0] == "": fields[0] = "???"
+if len(fields) > 0: 
+   readDataResults["text"][index]  = "<br><strong>REPLY</strong> ".join(fields)
+sys.stdout.write("<div style=\"\">"+str(1+len(processed))+": ")
 print "%s %s</div>" % (readDataResults["text"][index],contextLink)
 
 print "<form>"
@@ -204,9 +218,8 @@ print """
 <ol>
 <li> Lees de tweet
 <li> Kies de meest geschikte klasse en klik op de button met het cijfer van deze klasse
-<li> Als de klasse niet duidelijk is, klik dan op <font color="blue"><u>context</u></font> achter de tweet om de context te bekijken
 <li> Als je een fout maakt, kies dan BACK in de browser om terug te gaan naar de vorige tweet
-<li> Het nummer voor de tweet geeft aan de hoeveelste tweet nu in beeld staat (er zijn er 8575)
+<li> Het nummer voor de tweet geeft aan de hoeveelste tweet nu in beeld staat
 </ol>
 </font>
 </body>
