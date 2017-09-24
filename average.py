@@ -16,17 +16,19 @@ interval95 = 1.96
 total = 0.0
 count = 0.0
 numbers = []
+pattern = re.compile("^\s*#")
 for line in sys.stdin:
     line = line.rstrip()
-    fields = line.split()
-    for n in fields:
-        try:
-            nFloat = float(n)
-        except:
-            sys.exit(COMMAND+": "+n+" is not a number\n")
-        total += nFloat
-        count += 1.0
-        numbers.append(float(n))
+    if not pattern.match(line):
+        fields = line.split()
+        for n in fields:
+            try:
+                nFloat = float(n)
+            except:
+                sys.exit(COMMAND+": "+n+" is not a number\n")
+            total += nFloat
+            count += 1.0
+            numbers.append(float(n))
 
 if count <= 0.0:
     sys.exit(COMMAND+": could not read any data!")
