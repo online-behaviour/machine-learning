@@ -118,8 +118,8 @@ def getProbs(line):
         else:
             if len(fields) < i+2: sys.exit(COMMAND+": incomplete line ("+str(i)+"): "+str(fields))
             thisClass, value = fields[i], fields[i+1]
-            if thisClass in probs: probs[thisClass] += 1.0
-            else: probs[thisClass] = 1.0
+            if thisClass in probs: probs[thisClass] += float(value) # 20170924 was 1.0
+            else: probs[thisClass] = float(value) # was 1.0
             i += 2
     for c in probs: probs[c] /= nbrOfExps
     return(probs)

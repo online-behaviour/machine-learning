@@ -87,7 +87,8 @@ def main(argv):
             thisClass = tweets[t]["class"]
             cluster = 1
             pure = True
-            while thisId in replies and replies[thisId]["reply-to-id"] != "":
+            while thisId in replies and replies[thisId]["reply-to-id"] != "" \
+                and replies[thisId]["reply-to-id"] != "None":
                 tweets[t]["text"] += " REPLYTO"
                 if replies[thisId]["reply-to-id"] in skipTweets: 
                     thisId = "STOP!"

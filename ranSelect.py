@@ -55,6 +55,7 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
     users = [] # list with users
     replies = [] # list with ids of replied tweets
     classes = [] # list with tweet classes
+    guesses = [] # list with guesses of classes
     id2index = {} # dictionary linking tweet ids to indexes
     fileName = DATADIR+"/"+DATAFILE
     inFile = open(fileName,"r")
@@ -64,6 +65,7 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
         thisId = str(lineNbr)
         line = line.rstrip()
         fields = line.split()
+        thisGuess = fields.pop(0)
         thisClass = fields.pop(0)
         line = " ".join(fields)
         # only keep unannotated tweets and the last one that was annotated
@@ -75,6 +77,7 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
            users.append("UNKNOWN")
            # add tweet class to list
            classes.append(thisClass)
+           guesses.append(thisGuess)
            # add reply id to list (if any)
            replies.append("UNKNOWN")
            # link tweet id with list index
@@ -83,7 +86,7 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
            ids.append(thisId)
     inFile.close()
     # return results
-    return({"text":text, "classes":classes, "ids":ids, "replies":replies, "users":users, "id2index":id2index})
+    return({"text":text, "classes":classes, "guesses":guesses,"ids":ids, "replies":replies, "users":users, "id2index":id2index})
 
 def selectTweet():
    global readDataResults
@@ -134,7 +137,7 @@ if "id" in form:
     else: annotate8 = False
     if goldClass != "__label__None":
         if "__label__"+annotatedClass == goldClass: 
-            print "<font color=\"green\">"
+            print "<font color=\"blue\">"
             correct += 1
         else:
             if goldClass != "__label__None": print "<font color=\"red\">"
@@ -145,8 +148,10 @@ if "id" in form:
     fields = tweet.split("REPLYTO")
     fields = fields[::-1]
     if fields[0] == "": fields[0] = "???"
+    patternGoldClass = re.compile("__label__")
+    goldClassPrint = patternGoldClass.sub("",goldClass)
     if len(fields) > 0: tweet = "<br><strong>REPLY</strong> ".join(fields)
-    print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClass,tweet,contextLink)
+    print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClassPrint,tweet,contextLink)
     if goldClass != "__label__None": print "</font>\n"
     if correct+wrong > 0:
         print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
@@ -198,6 +203,8 @@ if len(fields) > 0:
 sys.stdout.write("<div style=\"\">"+str(1+len(processed))+": ")
 print "%s %s</div>" % (readDataResults["text"][index],contextLink)
 
+pattern = re.compile("__label__")
+readDataResults["guesses"][index] = pattern.sub("",readDataResults["guesses"][index])
 print "<form>"
 print "<input type=\"hidden\" name=\"id\" value=\"%s\">" % (readDataResults["ids"][index])
 print "<input type=\"hidden\" name=\"user\" value=\"%s\">" % (readDataResults["users"][index])
@@ -208,7 +215,9 @@ print "<table cellspacing=\"20px\">"
 for i in range(0,len(CLASSES)):
     if 2*int(i/2) == int(i): print "<tr><td>"
     else: print "<td>"
+    if int(readDataResults["guesses"][index])-1 == i: print "<strong style=\"color:red\">"
     print "<input name=\"class\" type=\"submit\" value=\"%d\" style=\"width:100px;\"> %s" % (i+1,CLASSES[i])
+    if int(readDataResults["guesses"][index])-1 == i: print "</strong>"
 print """
 </table>
 </form>

@@ -5,7 +5,7 @@
 
 COMMAND="$0"
 REVERSE=""
-MAKEPROBS=make-probs-learner
+MAKEPROBS=make-probs-bagging
 BATCHSIZE1=$1
 BATCHSIZE2=$2
 EXP=$3
@@ -37,7 +37,7 @@ function make-probs-bagging {
       $SELECT -d $MAKEPROBSTRAIN -z $TRAINSIZE -r -w -h $H > $MAKEPROBSTMP.train
       ../fasttext supervised -input $MAKEPROBSTMP.train -output $MAKEPROBSTMP -dim $DIM \
             -pretrainedVectors $VECTORS -minCount $MINCOUNT >/dev/null 2>/dev/null
-      ../fasttext predict-prob $MAKEPROBSTMP.bin $MAKEPROBSREST 1 > $MAKEPROBSTMP.probs.$i
+      ../fasttext predict-prob $MAKEPROBSTMP.bin $MAKEPROBSREST 1 | sed 's/ .*/ 1.0/' > $MAKEPROBSTMP.probs.$i
    done
    paste -d'#' $MAKEPROBSTMP.probs.* | sed 's/#/ # /g'
    rm -f $MAKEPROBSTMP.bin $MAKEPROBSTMP.vec $MAKEPROBSTMP.probs.* $MAKEPROBSTMP.train
@@ -97,13 +97,13 @@ function run-experiment {
 }
 
 run-experiment t # selection by earliest time
-run-experiment r # random data selection
+#run-experiment r # random data selection
 run-experiment c # selection by least confidence
 run-experiment m # selection by smallest margin of confidence
 run-experiment e # selection by highest entropy
-run-experiment l # selection by highest entropy
-REVERSE="-R"
-run-experiment t # selection by latest time
+#run-experiment l # selection by highest entropy
+#REVERSE="-R"
+#run-experiment t # selection by latest time
 
 rm -f $TMPFILE $TMPFILE.??? $TMPFILE.???? $TMPFILE.????? $TMPSTART.bin $TMPSTART.train
 
