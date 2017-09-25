@@ -97,13 +97,13 @@ function run-experiment {
 }
 
 run-experiment t # selection by earliest time
-#run-experiment r # random data selection
+run-experiment r # random data selection
 run-experiment c # selection by least confidence
 run-experiment m # selection by smallest margin of confidence
 run-experiment e # selection by highest entropy
-#run-experiment l # selection by highest entropy
-#REVERSE="-R"
-#run-experiment t # selection by latest time
+run-experiment l # selection by highest entropy
+REVERSE="-R"
+run-experiment t # selection by latest time
 
 rm -f $TMPFILE $TMPFILE.??? $TMPFILE.???? $TMPFILE.????? $TMPSTART.bin $TMPSTART.train
 

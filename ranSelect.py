@@ -137,10 +137,8 @@ if "id" in form:
     else: annotate8 = False
     if goldClass != "__label__None":
         if "__label__"+annotatedClass == goldClass: 
-            print "<font color=\"blue\">"
             correct += 1
         else:
-            if goldClass != "__label__None": print "<font color=\"red\">"
             wrong += 1
     processed[thisId] = True
     #contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+user+"/status/"+thisId+"\">context</a>"
@@ -151,11 +149,6 @@ if "id" in form:
     patternGoldClass = re.compile("__label__")
     goldClassPrint = patternGoldClass.sub("",goldClass)
     if len(fields) > 0: tweet = "<br><strong>REPLY</strong> ".join(fields)
-    print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClassPrint,tweet,contextLink)
-    if goldClass != "__label__None": print "</font>\n"
-    if correct+wrong > 0:
-        print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
-    print "<hr>"
     # write annotation to logfile
     try: outFile = open(DATADIR+"/"+ANNOFILE,"a")
     except: sys.exit(COMMAND+": cannot write logfile "+DATADIR+"/"+ANNOFILE)
@@ -170,7 +163,17 @@ if lastProcessed != "": deleteTweet(lastProcessed)
 
 # check if all tweets have been processed
 if len(readDataResults["text"]) <= 0:
-    print "Klaar"
+    if goldClass != "__label__None":
+        if "__label__"+annotatedClass == goldClass: 
+            print "<font color=\"blue\">"
+        else:
+            if goldClass != "__label__None": print "<font color=\"red\">"
+    print "<hr>"
+    print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClassPrint,tweet,contextLink)
+    if goldClass != "__label__None": print "</font>\n"
+    if correct+wrong > 0:
+        print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
+    print "<p>Klaar"
     sys.exit()
 index = selectTweet()
 if readDataResults["text"][index] in processed.keys():
@@ -231,6 +234,23 @@ print """
 <li> Het nummer voor de tweet geeft aan de hoeveelste tweet nu in beeld staat
 </ol>
 </font>
+"""
+
+try:
+    if goldClass != "__label__None":
+        if "__label__"+annotatedClass == goldClass: 
+            print "<font color=\"blue\">"
+        else:
+            if goldClass != "__label__None": print "<font color=\"red\">"
+    print "<hr>"
+    print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClassPrint,tweet,contextLink)
+    if goldClass != "__label__None": print "</font>\n"
+    if correct+wrong > 0:
+        print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
+except:
+    print("")
+
+print """
 </body>
 </html>
 """
