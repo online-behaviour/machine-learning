@@ -5,7 +5,7 @@
 
 COMMAND="$0"
 REVERSE=""
-MAKEPROBS=make-probs-bagging
+MAKEPROBS=make-probs-learner
 BATCHSIZE1=$1
 BATCHSIZE2=$2
 EXP=$3
@@ -13,8 +13,8 @@ if [ "$3" == "" ]; then echo usage: run batchsize1 batchsize2 exp >&2; exit 1; f
 H=0.5
 if [ "$4" != "" ]; then H=$4; fi
 METHOD1="t"
-TRAIN=dutch-2012.train-dev.txt.replyto
-TEST=dutch-2012.dev.txt.replyto
+TRAIN=dutch-2012.train-dev.txt.none
+TEST=dutch-2012.dev.txt.none
 VECTORS=vectors-train-dev-$EXP.vec
 TMPFILE=run.$$.$RANDOM
 TMPTRAIN=$TMPFILE.train
@@ -24,7 +24,7 @@ TMPSTART=$TMPFILE.start
 DIM=300
 MINCOUNT=5
 NBROFCLASSES=12
-BINDIR=/home/cloud/projects/online-behaviour/machine-learning
+BINDIR=$HOME/projects/online-behaviour/machine-learning
 SELECT=$BINDIR/active-select.py
 
 function make-probs-bagging {

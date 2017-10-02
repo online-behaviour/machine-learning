@@ -1,0 +1,38 @@
+#!/bin/bash
+# run-eval: run fasttext ten times and evaluate
+# usage: run-eval
+# 20171002 erikt(at)xs4all.nl
+
+TRAIN=dutch-2012.train-dev.txt
+TEST=dutch-2012.dev.txt
+PYTHONDIR=$HOME/projects/online-behaviour/machine-learning
+TMPFILE=run-eval.$$.$RANDOM
+OUTFILE=run-eval.out.$$.$RANDOM
+TMPTRAIN=$TMPFILE.train
+TMPTEST=$TMPFILE.test
+DIM=300
+MINCOUNT=5
+
+function prepare {
+   sed 's/ ID=[^ ]* / /' | sed 's/ SENDER=[^ ]* / /' | sed 's/ RAWTEXT .*$//'
+}
+prepare < $TRAIN > $TMPTRAIN
+prepare < $TEST > $TMPTEST
+
+(
+   echo "# TRAIN=$TRAIN TEST=$TEST DIM=$DIM MINCOUNT=$MINCOUNT"
+   for EXP in a b c d e f g h i j
+   do
+      VECTORS=vectors-train-dev-$EXP.vec
+      ../fasttext supervised -input $TMPTRAIN -output $TMPFILE \
+         -dim $DIM -minCount $MINCOUNT -pretrainedVectors $VECTORS \
+	  >/dev/null 2>/dev/null
+      ../fasttext predict $TMPFILE.bin $TMPTEST |\
+         paste -d ' ' - $TMPTEST | cut -d' ' -f1,2 | $PYTHONDIR/eval.py |\
+         head -1 | rev | sed 's/^ *//' | cut -d' ' -f1 | rev
+   done) | tee $OUTFILE | $PYTHONDIR/average.py > $TMPFILE.average
+sed 's/^/# /' $TMPFILE.average >> $OUTFILE
+cat $TMPFILE.average | sed "s/$/ $OUTFILE/"
+
+rm -f $TMPFILE.*
+exit 0

@@ -14,8 +14,13 @@ import sys
 
 COMMAND = sys.argv.pop(0)
 USAGE = "usage: "+COMMAND+"-t tweet-file -r replies-file [-s skip-file]"
+ID = 0
+USERNAME = 2
+TEXT = 4
+CLASS = 9
+REPLYTOID = 1
 
-def tokenize(text,keepUpperCase):
+def tokenize(text,keepUpperCase,keepMailUserHttp):
     tokenizedText = []   # list of lists of tokens per tweet
     patternEmail = re.compile("\S+@\S+")
     patternUserref = re.compile("@\S+")
@@ -37,12 +42,14 @@ def readTweets(fileName):
     with open(fileName,"r",encoding="utf8") as csvfile:
         csvreader = csv.reader(csvfile,delimiter=',',quotechar='"')
         for row in csvreader:
-            if len(row) < 5: sys.exit(COMMAND+": unexpected input line: "+str(row))
-            thisId = row[0]
-            text = " ".join(tokenize([row[4]],False)[0])
+            if len(row) <= TEXT: sys.exit(COMMAND+": unexpected input line: "+str(row))
+            thisId = row[ID]
+            userName = row[USERNAME]
+            text = row[TEXT]
+            tokenizedText = " ".join(tokenize([text],False,False)[0])
             thisClass = "None"
-            if len(row) > 9: thisClass = row[9]
-            tweets.append({"id":thisId,"text":text,"class":thisClass})
+            if len(row) > CLASS: thisClass = row[CLASS]
+            tweets.append({"id":thisId,"text":text,"userName":userName,"tokenizedText":tokenizedText,"class":thisClass})
             ids[thisId] = thisClass
         csvfile.close()
     return({"tweets":tweets,"ids":ids})
@@ -52,11 +59,12 @@ def readReplies(fileName):
     with open(fileName,"r",encoding="utf8") as csvfile:
         csvreader = csv.reader(csvfile,delimiter=',',quotechar='"')
         for row in csvreader:
-            if len(row) < 5: sys.exit(COMMAND+": incomplete line: "+str(row))
-            thisId = row[0]
-            replyToId = row[1]
-            text = " ".join(tokenize([row[4]],False)[0])
-            replies[thisId] = {"reply-to-id":replyToId,"text":text}
+            if len(row) <= TEXT : sys.exit(COMMAND+": incomplete line: "+str(row))
+            thisId = row[ID]
+            replyToId = row[REPLYTOID]
+            text = row[TEXT]
+            tokenizedText = " ".join(tokenize([text],False,False)[0])
+            replies[thisId] = {"reply-to-id":replyToId,"text":text,"tokenizedText":tokenizedText}
         csvfile.close()
     return(replies)
 
@@ -98,11 +106,12 @@ def main(argv):
                     if thisId in classes and classes[thisId] != thisClass: pure = False
                 if thisId in replies:
                     tweets[t]["text"] += " "+replies[thisId]["text"]
-            print("__label__"+tweets[t]["class"]+" "+tweets[t]["text"])
+            print("__label__"+tweets[t]["class"]+" ID="+tweets[t]["id"]+" SENDER="+tweets[t]["userName"]+" "+tweets[t]["tokenizedText"]+" RAWTEXT "+tweets[t]["text"])
             if cluster > 1:
                 nbrOfClusters += 1
                 if pure: nbrOfPure += 1
-    sys.stderr.write("Found "+str(nbrOfClusters)+ " clusters; pure: "+str(nbrOfPure)+" ("+str(int(100*nbrOfPure/nbrOfClusters))+"%)\n")
+    if nbrOfClusters > 0:
+        sys.stderr.write("Found "+str(nbrOfClusters)+ " clusters; pure: "+str(nbrOfPure)+" ("+str(int(100*nbrOfPure/nbrOfClusters))+"%)\n")
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
