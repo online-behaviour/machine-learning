@@ -29,9 +29,10 @@ def tokenize(text,keepUpperCase,keepMailUserHttp):
         # convert tweet text to lower case 
         if not keepUpperCase: text[i] = text[i].lower()
         # collapse all mail addresses, urls and user references to one token
-        text[i] = patternEmail.sub("MAIL",text[i])
-        text[i] = patternUserref.sub("USER",text[i])
-        text[i] = patternUrl.sub("HTTP",text[i])
+        if not keepMailUserHttp:
+            text[i] = patternEmail.sub("MAIL",text[i])
+            text[i] = patternUserref.sub("USER",text[i])
+            text[i] = patternUrl.sub("HTTP",text[i])
         # tokenize the tweet
         tokenizedText.append(nltk.word_tokenize(text[i]))
     return(tokenizedText)
@@ -45,7 +46,7 @@ def readTweets(fileName):
             if len(row) <= TEXT: sys.exit(COMMAND+": unexpected input line: "+str(row))
             thisId = row[ID]
             userName = row[USERNAME]
-            text = row[TEXT]
+            text = row[TEXT].replace("\n"," ")
             tokenizedText = " ".join(tokenize([text],False,False)[0])
             thisClass = "None"
             if len(row) > CLASS: thisClass = row[CLASS]

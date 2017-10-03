@@ -316,6 +316,8 @@ for line in selectResults["selected"]:
     print("%s" % (line["data"]))
 if outputAll:
     for line in selectResults["rest"]:
-        if printScore: print("%0.3f" % (line["score"]),end=" ")
+        if printScore:
+            if not "score" in line: line["score"] = 0.0
+            print("%0.3f" % (line["score"]),end=" ")
         print("%s" % (line["data"]))
 

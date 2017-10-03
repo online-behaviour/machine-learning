@@ -9,9 +9,16 @@ ID=$1
 if [ -z "$ID" ]; then echo "usage: run-make-batch id">&2; exit 1; fi
 LASTID=$(($ID-1))
 
-FASTTEXTDIR=/home/cloud/software/fastText/replyto
-PYTHONDIR=/home/cloud/projects/online-behaviour/machine-learning
+FASTTEXTDIR=/home/erikt/software/fastText/paper-2
+PYTHONDIR=/home/erikt/projects/online-behaviour/machine-learning
 ANNOTATIONS=ANNOTATIONS.annotate
+TRAIN=TRAIN
+TRAINRANDOM=dutch-2012.train.txt.random
+DIM=300
+MINCOUNT=5
+EXP=a
+VECTORS=vectors-train-$EXP.vec
+TMPFILE=$0.$$.$RANDOM
 
 if [ $ID != "1" ]; then
    cd $PYTHONDIR
@@ -32,13 +39,13 @@ cd $FASTTEXTDIR
 
 ebackup run-selected-a.0$ID
 head -110 run-selected-a.0$ID | cut -d' ' -f2- > $PYTHONDIR/active-0$ID
-NEXTID=$(($ID+7))
-head -$NEXTID${NEXTID}0 TRAIN-01d | tail -110 >> $PYTHONDIR/active-0$ID
-cat TRAIN ACTIVE-?? > TRAIN+ACTIVE
+NEXTID=$(($ID+0))
+head -$NEXTID${NEXTID}0 $TRAINRANDOM | tail -110 >> $PYTHONDIR/active-0$ID
+cat $TRAIN ACTIVE-?? > TRAIN+ACTIVE
 wc TRAIN+ACTIVE
-../fasttext supervised -input TRAIN+ACTIVE -output model -dim 300 \
-   -minCount 5 -pretrainedVectors model-a.vec > /dev/null 2>/dev/null
-../fasttext predict model.bin $PYTHONDIR/active-0$ID \
+../fasttext supervised -input TRAIN+ACTIVE -output $TMPFILE -dim $DIM \
+   -minCount $MINCOUNT -pretrainedVectors $VECTORS > /dev/null 2>/dev/null
+../fasttext predict $TMPFILE.bin $PYTHONDIR/active-0$ID \
    > $PYTHONDIR/active-0$ID.labels
 
 cd $PYTHONDIR
@@ -57,6 +64,8 @@ if [ $ID != "1" ]; then
 fi
 
 cd $FASTTEXTDIR
-./run-eval | tee run-eval.out.active.0$LASTID | $PYTHONDIR/average.py
+./run-eval | tee run-eval.out.active.0$LASTID 
+
+rm -f $TMPFILE.*
 
 exit 0

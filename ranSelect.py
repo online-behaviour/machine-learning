@@ -17,7 +17,7 @@ COMMAND = sys.argv.pop(0).split("/")[-1]
 # store error log messages in file /tmp/command.log
 #cgitb.enable(display=0, logdir="/tmp/"+COMMAND)
 cgitb.enable()
-DATADIR = "/home/cloud/projects/online-behaviour/machine-learning"
+DATADIR = "/WWW/t/tjongkim/private/machine-learning"
 DATAFILE = "active" # "dutch-2012.csv.8.questionmark" # 13"
 ANNOFILE = "ANNOTATIONS."+COMMAND
 # -1,6,0.991,7,0.901,674221988416720896,JoelVoordewind,Terecht zegt VdSteur dat daders moeten worden aangepakt na bedreigingen LHBTs en op voorspraak v CU vult hij aan ook christen-asielzoekers.
@@ -57,6 +57,7 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
     classes = [] # list with tweet classes
     guesses = [] # list with guesses of classes
     id2index = {} # dictionary linking tweet ids to indexes
+    twitterIds = [] # list with twitter ids
     fileName = DATADIR+"/"+DATAFILE
     inFile = open(fileName,"r")
     lineNbr = 0
@@ -67,6 +68,8 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
         fields = line.split()
         thisGuess = fields.pop(0)
         thisClass = fields.pop(0)
+        twitterId = fields[0]
+        twitterId = re.sub(r"ID=","",twitterId) 
         line = " ".join(fields)
         # only keep unannotated tweets and the last one that was annotated
         if (not thisId in processed or thisId == lastProcessed) and \
@@ -84,9 +87,10 @@ def readData(idColumn,tweetColumn,replyColumn,classColumn,userColumn,fileHasHead
            id2index[thisId] = len(ids)
            # add tweet id to list
            ids.append(thisId)
+           twitterIds.append(twitterId)
     inFile.close()
     # return results
-    return({"text":text, "classes":classes, "guesses":guesses,"ids":ids, "replies":replies, "users":users, "id2index":id2index})
+    return({"text":text, "classes":classes, "guesses":guesses,"ids":ids, "replies":replies, "users":users, "id2index":id2index, "twitterIds":twitterIds})
 
 def selectTweet():
    global readDataResults
@@ -115,6 +119,9 @@ def deleteTweet(thisId):
 # cgi output initialization line
 print "Content-Type: text/html\n\n<html><head><title>annotate</title><meta charset=\"UTF-8\"></head><body>"
 
+# if os.path.isdir("/WWW/t/tjongkim/private/machine-learning"): print("<br>TRUE!")
+# else: print("<br>FALSE!")
+
 # read the known annotations
 readAnnotations(DATADIR+"/"+ANNOFILE)
 
@@ -128,7 +135,8 @@ if "id" in form:
     tmp2 = readDataResults["id2index"][tmp1]
     goldClass = readDataResults["classes"][readDataResults["id2index"][form["id"].value]]
     annotatedClass = form["class"].value
-    tweet = readDataResults["text"][readDataResults["id2index"][form["id"].value]]
+    prevTweet = readDataResults["text"][readDataResults["id2index"][form["id"].value]]
+    prevTweet = re.sub(".* RAWTEXT ","",prevTweet)
     if "correct" in form: correct = int(form["correct"].value)
     if "wrong" in form: wrong = int(form["wrong"].value)
     user = form["user"].value
@@ -141,14 +149,14 @@ if "id" in form:
         else:
             wrong += 1
     processed[thisId] = True
-    #contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+user+"/status/"+thisId+"\">context</a>"
+    # contextLink = "<a target = \"_blank\" href=\"https://twitter.com/user/status/id">context</a>"
     contextLink = ""
-    fields = tweet.split("REPLYTO")
+    fields = prevTweet.split("REPLYTO")
     fields = fields[::-1]
     if fields[0] == "": fields[0] = "???"
     patternGoldClass = re.compile("__label__")
     goldClassPrint = patternGoldClass.sub("",goldClass)
-    if len(fields) > 0: tweet = "<br><strong>REPLY</strong> ".join(fields)
+    if len(fields) > 0: prevTweet = "<br><strong>REPLY</strong> ".join(fields)
     # write annotation to logfile
     try: outFile = open(DATADIR+"/"+ANNOFILE,"a")
     except: sys.exit(COMMAND+": cannot write logfile "+DATADIR+"/"+ANNOFILE)
@@ -169,7 +177,7 @@ if len(readDataResults["text"]) <= 0:
         else:
             if goldClass != "__label__None": print "<font color=\"red\">"
     print "<hr>"
-    print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClassPrint,tweet,contextLink)
+    print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClassPrint,prevTweet,contextLink)
     if goldClass != "__label__None": print "</font>\n"
     if correct+wrong > 0:
         print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
@@ -195,16 +203,17 @@ if len(replyTexts) > 0:
         for j in range(i,len(replyTexts)): print "&nbsp;&nbsp;&nbsp;"
         print replyTexts[i]
     print "</div>"
-# contextLink = "<a target = \"_blank\" href=\"https://twitter.com/"+str(readDataResults["users"][index])+"/status/"+str(readDataResults["ids"][index])+"\">context</a>"
-contextLink = ""
+contextLink = "<a target = \"_blank\" href=\"https://twitter.com/user/status/"+str(readDataResults["twitterIds"][index])+"\">context</a>"
 # show tweet
-fields = readDataResults["text"][index] .split("REPLYTO")
-fields = fields[::-1]
-if fields[0] == "": fields[0] = "???"
-if len(fields) > 0: 
-   readDataResults["text"][index]  = "<br><strong>REPLY</strong> ".join(fields)
+tweetText = readDataResults["text"][index]
+tweetText = re.sub(r".* RAWTEXT","",tweetText)
+#fields = tweetText.split("REPLYTO")
+#fields = fields[::-1]
+#if fields[0] == "": fields[0] = "???"
+#if len(fields) > 0: 
+#   readDataResults["text"][index]  = "<br><strong>REPLY</strong> ".join(fields)
 sys.stdout.write("<div style=\"\">"+str(1+len(processed))+": ")
-print "%s %s</div>" % (readDataResults["text"][index],contextLink)
+print "%s %s</div>" % (tweetText,contextLink)
 
 pattern = re.compile("__label__")
 readDataResults["guesses"][index] = pattern.sub("",readDataResults["guesses"][index])
@@ -243,7 +252,7 @@ try:
         else:
             if goldClass != "__label__None": print "<font color=\"red\">"
     print "<hr>"
-    print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClassPrint,tweet,contextLink)
+    print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClassPrint,prevTweet,contextLink)
     if goldClass != "__label__None": print "</font>\n"
     if correct+wrong > 0:
         print "<br>Correct: %0.1f%%" % (100.0*float(correct)/float(correct+wrong))
