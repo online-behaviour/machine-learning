@@ -131,8 +131,9 @@ readDataResults = readData(IDCOLUMN,TWEETCOLUMN,RETWEETCOLUMN,CLASSCOLUMN,USERCO
 # process the cgi data if any
 form = cgi.FieldStorage()
 if "id" in form:
-    tmp1 = form["id"].value
-    tmp2 = readDataResults["id2index"][tmp1]
+    prevId = form["id"].value
+    prevId = readDataResults["id2index"][prevId]
+    prevTweetId = readDataResults["twitterIds"][prevId]
     goldClass = readDataResults["classes"][readDataResults["id2index"][form["id"].value]]
     annotatedClass = form["class"].value
     prevTweet = readDataResults["text"][readDataResults["id2index"][form["id"].value]]
@@ -207,11 +208,6 @@ contextLink = "<a target = \"_blank\" href=\"https://twitter.com/user/status/"+s
 # show tweet
 tweetText = readDataResults["text"][index]
 tweetText = re.sub(r".* RAWTEXT","",tweetText)
-#fields = tweetText.split("REPLYTO")
-#fields = fields[::-1]
-#if fields[0] == "": fields[0] = "???"
-#if len(fields) > 0: 
-#   readDataResults["text"][index]  = "<br><strong>REPLY</strong> ".join(fields)
 sys.stdout.write("<div style=\"\">"+str(1+len(processed))+": ")
 print "%s %s</div>" % (tweetText,contextLink)
 
@@ -251,6 +247,7 @@ try:
             print "<font color=\"blue\">"
         else:
             if goldClass != "__label__None": print "<font color=\"red\">"
+    contextLink = "<a target = \"_blank\" href=\"https://twitter.com/user/status/"+prevTweetId+"\">context</a>"
     print "<hr>"
     print "<div style=\"\">Antwoord: %s; Correct: %s; Tweet: %s %s</div>" % (annotatedClass,goldClassPrint,prevTweet,contextLink)
     if goldClass != "__label__None": print "</font>\n"
