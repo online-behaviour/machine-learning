@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -W all
 # expand-replies: combine text of replies with text they are replying on
-# usage: expand-replies.py -t tweet-file.csv -r replies-file.csv [-s skip-file.csv]
+# usage: expand-replies.py -t tweet-file.csv -r replies-file.csv [-s skip-file.csv] [-i id-col] [-T text-col] [-c class-col] [-u username-col] [-h]
 # note: csv file formats:
 # - tweet-file.csv and skip-file.csv: column 0: id; 4: text; 9: label
 # - replies-file.csv: column 0: id; 1: reply-to-id; 4: text
@@ -14,11 +14,6 @@ import sys
 
 COMMAND = sys.argv.pop(0)
 USAGE = "usage: "+COMMAND+"-t tweet-file -r replies-file [-s skip-file]"
-ID = 0
-USERNAME = 2
-TEXT = 4
-CLASS = 9
-REPLYTOID = 1
 
 def tokenize(text,keepUpperCase,keepMailUserHttp):
     tokenizedText = []   # list of lists of tokens per tweet
@@ -37,33 +32,36 @@ def tokenize(text,keepUpperCase,keepMailUserHttp):
         tokenizedText.append(nltk.word_tokenize(text[i]))
     return(tokenizedText)
 
-def readTweets(fileName):
+def readTweets(fileName,classCol,idCol,textCol,usernameCol,heading):
     tweets = []
     ids = {}
+    count = 0
     with open(fileName,"r",encoding="utf8") as csvfile:
         csvreader = csv.reader(csvfile,delimiter=',',quotechar='"')
         for row in csvreader:
-            if len(row) <= TEXT: sys.exit(COMMAND+": unexpected input line: "+str(row))
-            thisId = row[ID]
-            userName = row[USERNAME]
-            text = row[TEXT].replace("\n"," ")
-            tokenizedText = " ".join(tokenize([text],False,False)[0])
-            thisClass = "None"
-            if len(row) > CLASS: thisClass = row[CLASS]
-            tweets.append({"id":thisId,"text":text,"userName":userName,"tokenizedText":tokenizedText,"class":thisClass})
-            ids[thisId] = thisClass
+            if len(row) <= textCol: sys.exit(COMMAND+": unexpected input line: "+str(row))
+            count += 1
+            if not heading or count != 1:
+                thisId = row[idCol]
+                userName = row[usernameCol]
+                text = row[textCol].replace("\n"," ")
+                tokenizedText = " ".join(tokenize([text],False,False)[0])
+                thisClass = "None"
+                if len(row) > classCol: thisClass = row[classCol]
+                tweets.append({"id":thisId,"text":text,"userName":userName,"tokenizedText":tokenizedText,"class":thisClass})
+                ids[thisId] = thisClass
         csvfile.close()
     return({"tweets":tweets,"ids":ids})
 
-def readReplies(fileName):
+def readReplies(fileName,idCol,replytoidCol,textCol):
     replies = {}
     with open(fileName,"r",encoding="utf8") as csvfile:
         csvreader = csv.reader(csvfile,delimiter=',',quotechar='"')
         for row in csvreader:
-            if len(row) <= TEXT : sys.exit(COMMAND+": incomplete line: "+str(row))
-            thisId = row[ID]
-            replyToId = row[REPLYTOID]
-            text = row[TEXT]
+            if len(row) <= textCol: sys.exit(COMMAND+": incomplete line: "+str(row))
+            thisId = row[idCol]
+            replyToId = row[replytoidCol]
+            text = row[textCol]
             tokenizedText = " ".join(tokenize([text],False,False)[0])
             replies[thisId] = {"reply-to-id":replyToId,"text":text,"tokenizedText":tokenizedText}
         csvfile.close()
@@ -73,18 +71,30 @@ def main(argv):
     tweetFile = ""
     repliesFile = ""
     skipFile = ""
-    try: options = getopt.getopt(sys.argv,"t:r:s:",[])
+    idCol = 0
+    usernameCol = 2
+    textCol = 4
+    classCol = 9
+    replytoidCol = 1
+    heading = False
+    try: options = getopt.getopt(sys.argv,"c:hi:r:s:t:T:u:",[])
     except: sys.exit(usage)
     for option in options[0]:
-        if option[0] == "-t": tweetFile = option[1]
+        if option[0] == "-c": classCol = int(option[1])-1
+        elif option[0] == "-h": heading = True
+        elif option[0] == "-i": idCol = int(option[1])-1
         elif option[0] == "-r": repliesFile = option[1]
         elif option[0] == "-s": skipFile = option[1]
+        elif option[0] == "-t": tweetFile = option[1]
+        elif option[0] == "-T": textCol = int(option[1])-1
+        elif option[0] == "-u": usernameCol = int(option[1])-1
+        else: sys.exit(COMMAND+": unknown option "+option[0])
     if tweetFile == "" or repliesFile == "": sys.exit(USAGE)
     
-    readTweetsResults = readTweets(tweetFile)
+    readTweetsResults = readTweets(tweetFile,classCol,idCol,textCol,usernameCol,heading)
     tweets = readTweetsResults["tweets"]
     classes = readTweetsResults["ids"]
-    replies = readReplies(repliesFile)
+    replies = readReplies(repliesFile,idCol,replytoidCol,textCol)
     skipTweets = {}
     if skipFile != "": skipTweets = readTweets(skipFile)["ids"]
     

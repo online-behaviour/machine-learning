@@ -19,6 +19,8 @@ MINCOUNT=5
 EXP=a
 VECTORS=vectors-train-$EXP.vec
 TMPFILE=$0.$$.$RANDOM
+BATCHSIZE=110
+FACTOR=7
 
 if [ $ID != "1" ]; then
    cd $PYTHONDIR
@@ -29,7 +31,7 @@ if [ $ID != "1" ]; then
    ebackup $ANNOTATIONS
    cut -d' ' -f1,3 ANNOTATIONS.annotate | sort -n |\
       paste -d' ' - active-0$LASTID | cut -d' ' -f2,5- | sed 's/^/__label__/' |\
-      head -110 > $FASTTEXTDIR/ACTIVE-0$LASTID
+      head -$BATCHSIZE > $FASTTEXTDIR/ACTIVE-0$LASTID
    
    cd $FASTTEXTDIR
    tail -n +111 run-selected-a.0$LASTID | cut -d' ' -f2- > REST.unique.0$LASTID
@@ -38,9 +40,10 @@ cd $FASTTEXTDIR
 ./run-select $ID
 
 ebackup run-selected-a.0$ID
-head -110 run-selected-a.0$ID | cut -d' ' -f2- > $PYTHONDIR/active-0$ID
+TOTALBATCHSIZE=$(($FACTOR*$BATCHSIZE))
+head -$TOTALBATCHSIZE run-selected-a.0$ID | cut -d' ' -f2- > $PYTHONDIR/active-0$ID
 NEXTID=$(($ID+0))
-head -$NEXTID${NEXTID}0 $TRAINRANDOM | tail -110 >> $PYTHONDIR/active-0$ID
+head -$NEXTID${NEXTID}0 $TRAINRANDOM | tail -$BATCHSIZE >> $PYTHONDIR/active-0$ID
 cat $TRAIN ACTIVE-?? > TRAIN+ACTIVE
 wc TRAIN+ACTIVE
 ../fasttext supervised -input TRAIN+ACTIVE -output $TMPFILE -dim $DIM \
@@ -60,7 +63,7 @@ if [ $ID != "1" ]; then
    mv $ANNOTATIONS $ANNOTATIONS.0$LASTID
    touch $ANNOTATIONS
    COUNT="`grep -v __None $ANNOTATIONS.0$LASTID | cut -d' ' -f2,3 | sed 's/__label__//' | grep '^\(.*\) \1$' | wc -l`"
-   echo ${COUNT}000/110 | bc | sed 's/^/Human: /' | sed 's/\(.\) *$/.\1%/'
+   echo ${COUNT}000/$BATCHSIZE | bc | sed 's/^/Human: /' | sed 's/\(.\) *$/.\1%/'
 fi
 
 cd $FASTTEXTDIR

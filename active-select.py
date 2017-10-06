@@ -50,7 +50,7 @@ randomWithReplacement = False
 simFile = ""
 data = []
 
-try: options = getopt.getopt(sys.argv,"acd:eh:lmp:rRs:Stxwz:",[])
+try: options = getopt.getopt(sys.argv,"acd:Deh:lmp:rRs:Stxwz:",[])
 except: sys.exit(USAGE)
 nbrOfMethods = 0
 for option in options[0]:
