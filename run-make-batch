@@ -32,8 +32,8 @@ cd $FASTTEXTDIR
 
 ebackup run-selected-a.0$ID
 head -110 run-selected-a.0$ID | cut -d' ' -f2- > $PYTHONDIR/active-0$ID
-NEXTID=$(($ID+7))
-head -$NEXTID${NEXTID}0 TRAIN-01d | tail -110 >> $PYTHONDIR/active-0$ID
+NEXTID=$(($ID+0))
+head -$NEXTID${NEXTID}0 TRAIN.random | tail -110 >> $PYTHONDIR/active-0$ID
 cat TRAIN ACTIVE-?? > TRAIN+ACTIVE
 wc TRAIN+ACTIVE
 ../fasttext supervised -input TRAIN+ACTIVE -output model -dim 300 \
