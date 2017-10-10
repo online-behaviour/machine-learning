@@ -1,0 +1,81 @@
+#!/bin/bash
+# run-make-batch: make next batch file for annotator
+# usage: run-make-batch id
+# note: parameter id is a single digit
+# 20170924 erikt(at)xs4all.nl
+
+COMMAND=$0
+ID=$1
+if [ -z "$ID" ]; then echo "usage: run-make-batch id">&2; exit 1; fi
+LASTID=$(($ID-1))
+
+FASTTEXTDIR=/home/erikt/software/fastText/paper-2
+PYTHONDIR=/home/erikt/projects/online-behaviour/machine-learning
+ANNOTATIONS=ANNOTATIONS.annotate
+TRAIN=TRAIN
+TRAINRANDOM=dutch-2012.train.txt.random
+DIM=300
+MINCOUNT=5
+EXP=a
+VECTORS=vectors-train-$EXP.vec
+TMPFILE=$0.$$.$RANDOM
+BATCHSIZE=110
+FACTOR=7
+
+if [ $ID != "1" ]; then
+   cd $PYTHONDIR
+   if [ "`cat $ANNOTATIONS|wc -l`" != "220" ]; then
+      echo "annotations problem">&2
+      exit 1
+   fi
+   ebackup $ANNOTATIONS
+   cut -d' ' -f1,3 ANNOTATIONS.annotate | sort -n |\
+      paste -d' ' - active-0$LASTID | cut -d' ' -f2,5- | sed 's/^/__label__/' |\
+      head -$BATCHSIZE > $FASTTEXTDIR/ACTIVE-0$LASTID
+   
+   cd $FASTTEXTDIR
+   tail -n +111 run-selected-a.0$LASTID | cut -d' ' -f2- > REST.unique.0$LASTID
+fi
+cd $FASTTEXTDIR
+./run-select $ID
+
+ebackup run-selected-a.0$ID
+<<<<<<< HEAD
+head -110 run-selected-a.0$ID | cut -d' ' -f2- > $PYTHONDIR/active-0$ID
+NEXTID=$(($ID+0))
+head -$NEXTID${NEXTID}0 TRAIN.random | tail -110 >> $PYTHONDIR/active-0$ID
+cat TRAIN ACTIVE-?? > TRAIN+ACTIVE
+=======
+TOTALBATCHSIZE=$(($FACTOR*$BATCHSIZE))
+head -$TOTALBATCHSIZE run-selected-a.0$ID | cut -d' ' -f2- > $PYTHONDIR/active-0$ID
+NEXTID=$(($ID+0))
+head -$NEXTID${NEXTID}0 $TRAINRANDOM | tail -$BATCHSIZE >> $PYTHONDIR/active-0$ID
+cat $TRAIN ACTIVE-?? > TRAIN+ACTIVE
+>>>>>>> fd7ce23564b60f50eed271e890f97b6ab103dcb2
+wc TRAIN+ACTIVE
+../fasttext supervised -input TRAIN+ACTIVE -output $TMPFILE -dim $DIM \
+   -minCount $MINCOUNT -pretrainedVectors $VECTORS > /dev/null 2>/dev/null
+../fasttext predict $TMPFILE.bin $PYTHONDIR/active-0$ID \
+   > $PYTHONDIR/active-0$ID.labels
+
+cd $PYTHONDIR
+paste -d' ' active-0$ID.labels active-0$ID > active-0$ID.tmp
+ebackup -r active-0$ID
+mv active-0$ID.tmp active-0$ID
+chmod 444 active-0$ID
+rm -f active
+ln -s active-0$ID active
+if [ $ID != "1" ]; then
+   chmod 444 $ANNOTATIONS
+   mv $ANNOTATIONS $ANNOTATIONS.0$LASTID
+   touch $ANNOTATIONS
+   COUNT="`grep -v __None $ANNOTATIONS.0$LASTID | cut -d' ' -f2,3 | sed 's/__label__//' | grep '^\(.*\) \1$' | wc -l`"
+   echo ${COUNT}000/$BATCHSIZE | bc | sed 's/^/Human: /' | sed 's/\(.\) *$/.\1%/'
+fi
+
+cd $FASTTEXTDIR
+./run-eval | tee run-eval.out.active.0$LASTID 
+
+rm -f $TMPFILE.*
+
+exit 0
