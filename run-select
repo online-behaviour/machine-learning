@@ -1,0 +1,69 @@
+#!/bin/bash
+# run: run active learning experiment
+# usage: run batchsize1 batchsize2 exp [h]
+# 20170829 erikt(at)xs4all.nl
+
+COMMAND="$0"
+ID=$1
+if [ "$ID" == "" ]; then echo usage: $COMMAND id >&2; fi
+LASTID=$(($ID-1))
+REVERSE=""
+MAKEPROBS=make-probs-learner
+BATCHSIZE=110
+EXP=a
+H=0.5
+METHOD="r"
+TRAIN=TRAIN
+TEST=TEST
+REST=REST.unique.0$LASTID
+VECTORS=vectors-train-dev-$EXP.vec
+TMPFILE=run.$$.$RANDOM
+TMPTRAIN=$TMPFILE.train
+TMPREST=$TMPFILE.rest
+TMPPROBS=$TMPFILE.probs
+TMPSTART=$TMPFILE.start
+DIM=300
+MINCOUNT=5
+NBROFCLASSES=12
+BINDIR=$HOME/projects/online-behaviour/machine-learning
+SELECT=$BINDIR/active-select.py
+
+function make-probs-bagging {
+   MAKEPROBSTRAIN=$1
+   MAKEPROBSREST=$2
+   MAKEPROBSTMP=run.makeprobs.$$.$RANDOM
+   TRAINSIZE=`cat $MAKEPROBSTRAIN|wc -l`
+   for i in {1..10}
+   do
+      $SELECT -d $MAKEPROBSTRAIN -z $TRAINSIZE -r -w -h $H > $MAKEPROBSTMP.train
+      ../fasttext supervised -input $MAKEPROBSTMP.train -output $MAKEPROBSTMP -dim $DIM \
+            -pretrainedVectors $VECTORS -minCount $MINCOUNT >/dev/null 2>/dev/null
+      ../fasttext predict-prob $MAKEPROBSTMP.bin $MAKEPROBSREST 1 | sed 's/ .*/ 1.0/' > $MAKEPROBSTMP.probs.$i
+   done
+   paste -d'#' $MAKEPROBSTMP.probs.* | sed 's/#/ # /g'
+   rm -f $MAKEPROBSTMP.bin $MAKEPROBSTMP.vec $MAKEPROBSTMP.probs.* $MAKEPROBSTMP.train
+}
+
+function make-probs-learner {
+   MAKEPROBSTRAIN=$1
+   MAKEPROBSREST=$2
+   MAKEPROBSTMP=run.makeprobs.$$.$RANDOM
+   TRAINSIZE=`cat $MAKEPROBSTRAIN|wc -l`
+   ../fasttext supervised -input $MAKEPROBSTRAIN -output $MAKEPROBSTMP -dim $DIM \
+            -pretrainedVectors $VECTORS -minCount $MINCOUNT >/dev/null 2>/dev/null
+   ../fasttext predict-prob $MAKEPROBSTMP.bin $MAKEPROBSREST $NBROFCLASSES
+   rm -f $MAKEPROBSTMP.bin $MAKEPROBSTMP.vec
+}
+
+cat TRAIN ACTIVE-?? > $TMPTRAIN
+if [ "$METHOD" == "c" -o "$METHOD" == "e" -o "$METHOD" == "m" ]; then
+   $MAKEPROBS $TMPTRAIN $REST > $TMPPROBS
+else
+   echo -e "\c" > $TMPPROBS
+fi
+$SELECT -d $REST -p $TMPPROBS -z $BATCHSIZE -a -$METHOD $REVERSE -h $H -x > run-selected-a.0$ID
+
+rm -f $TMPFILE $TMPFILE.??? $TMPFILE.???? $TMPFILE.????? $TMPSTART.bin $TMPSTART.train
+
+exit 0
+

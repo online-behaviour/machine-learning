@@ -1,6 +1,6 @@
 #!/usr/bin/python3 -W all
 # expand-replies: combine text of replies with text they are replying on
-# usage: expand-replies.py -t tweet-file.csv -r replies-file.csv [-s skip-file.csv]
+# usage: expand-replies.py -t tweet-file.csv -r replies-file.csv [-s skip-file.csv] [-i id-col] [-T text-col] [-c class-col] [-u username-col] [-h]
 # note: csv file formats:
 # - tweet-file.csv and skip-file.csv: column 0: id; 4: text; 9: label
 # - replies-file.csv: column 0: id; 1: reply-to-id; 4: text
@@ -15,7 +15,7 @@ import sys
 COMMAND = sys.argv.pop(0)
 USAGE = "usage: "+COMMAND+"-t tweet-file -r replies-file [-s skip-file]"
 
-def tokenize(text,keepUpperCase):
+def tokenize(text,keepUpperCase,keepMailUserHttp):
     tokenizedText = []   # list of lists of tokens per tweet
     patternEmail = re.compile("\S+@\S+")
     patternUserref = re.compile("@\S+")
@@ -24,39 +24,46 @@ def tokenize(text,keepUpperCase):
         # convert tweet text to lower case 
         if not keepUpperCase: text[i] = text[i].lower()
         # collapse all mail addresses, urls and user references to one token
-        text[i] = patternEmail.sub("MAIL",text[i])
-        text[i] = patternUserref.sub("USER",text[i])
-        text[i] = patternUrl.sub("HTTP",text[i])
+        if not keepMailUserHttp:
+            text[i] = patternEmail.sub("MAIL",text[i])
+            text[i] = patternUserref.sub("USER",text[i])
+            text[i] = patternUrl.sub("HTTP",text[i])
         # tokenize the tweet
         tokenizedText.append(nltk.word_tokenize(text[i]))
     return(tokenizedText)
 
-def readTweets(fileName):
+def readTweets(fileName,classCol,idCol,textCol,usernameCol,heading):
     tweets = []
     ids = {}
+    count = 0
     with open(fileName,"r",encoding="utf8") as csvfile:
         csvreader = csv.reader(csvfile,delimiter=',',quotechar='"')
         for row in csvreader:
-            if len(row) < 5: sys.exit(COMMAND+": unexpected input line: "+str(row))
-            thisId = row[0]
-            text = " ".join(tokenize([row[4]],False)[0])
-            thisClass = "None"
-            if len(row) > 9: thisClass = row[9]
-            tweets.append({"id":thisId,"text":text,"class":thisClass})
-            ids[thisId] = thisClass
+            if len(row) <= textCol: sys.exit(COMMAND+": unexpected input line: "+str(row))
+            count += 1
+            if not heading or count != 1:
+                thisId = row[idCol]
+                userName = row[usernameCol]
+                text = row[textCol].replace("\n"," ")
+                tokenizedText = " ".join(tokenize([text],False,False)[0])
+                thisClass = "None"
+                if len(row) > classCol: thisClass = row[classCol]
+                tweets.append({"id":thisId,"text":text,"userName":userName,"tokenizedText":tokenizedText,"class":thisClass})
+                ids[thisId] = thisClass
         csvfile.close()
     return({"tweets":tweets,"ids":ids})
 
-def readReplies(fileName):
+def readReplies(fileName,idCol,replytoidCol,textCol):
     replies = {}
     with open(fileName,"r",encoding="utf8") as csvfile:
         csvreader = csv.reader(csvfile,delimiter=',',quotechar='"')
         for row in csvreader:
-            if len(row) < 5: sys.exit(COMMAND+": incomplete line: "+str(row))
-            thisId = row[0]
-            replyToId = row[1]
-            text = " ".join(tokenize([row[4]],False)[0])
-            replies[thisId] = {"reply-to-id":replyToId,"text":text}
+            if len(row) <= textCol: sys.exit(COMMAND+": incomplete line: "+str(row))
+            thisId = row[idCol]
+            replyToId = row[replytoidCol]
+            text = row[textCol]
+            tokenizedText = " ".join(tokenize([text],False,False)[0])
+            replies[thisId] = {"reply-to-id":replyToId,"text":text,"tokenizedText":tokenizedText}
         csvfile.close()
     return(replies)
 
@@ -64,18 +71,30 @@ def main(argv):
     tweetFile = ""
     repliesFile = ""
     skipFile = ""
-    try: options = getopt.getopt(sys.argv,"t:r:s:",[])
+    idCol = 0
+    usernameCol = 2
+    textCol = 4
+    classCol = 9
+    replytoidCol = 1
+    heading = False
+    try: options = getopt.getopt(sys.argv,"c:hi:r:s:t:T:u:",[])
     except: sys.exit(usage)
     for option in options[0]:
-        if option[0] == "-t": tweetFile = option[1]
+        if option[0] == "-c": classCol = int(option[1])-1
+        elif option[0] == "-h": heading = True
+        elif option[0] == "-i": idCol = int(option[1])-1
         elif option[0] == "-r": repliesFile = option[1]
         elif option[0] == "-s": skipFile = option[1]
+        elif option[0] == "-t": tweetFile = option[1]
+        elif option[0] == "-T": textCol = int(option[1])-1
+        elif option[0] == "-u": usernameCol = int(option[1])-1
+        else: sys.exit(COMMAND+": unknown option "+option[0])
     if tweetFile == "" or repliesFile == "": sys.exit(USAGE)
     
-    readTweetsResults = readTweets(tweetFile)
+    readTweetsResults = readTweets(tweetFile,classCol,idCol,textCol,usernameCol,heading)
     tweets = readTweetsResults["tweets"]
     classes = readTweetsResults["ids"]
-    replies = readReplies(repliesFile)
+    replies = readReplies(repliesFile,idCol,replytoidCol,textCol)
     skipTweets = {}
     if skipFile != "": skipTweets = readTweets(skipFile)["ids"]
     
@@ -98,11 +117,12 @@ def main(argv):
                     if thisId in classes and classes[thisId] != thisClass: pure = False
                 if thisId in replies:
                     tweets[t]["text"] += " "+replies[thisId]["text"]
-            print("__label__"+tweets[t]["class"]+" "+tweets[t]["text"])
+            print("__label__"+tweets[t]["class"]+" ID="+tweets[t]["id"]+" SENDER="+tweets[t]["userName"]+" "+tweets[t]["tokenizedText"]+" RAWTEXT "+tweets[t]["text"])
             if cluster > 1:
                 nbrOfClusters += 1
                 if pure: nbrOfPure += 1
-    sys.stderr.write("Found "+str(nbrOfClusters)+ " clusters; pure: "+str(nbrOfPure)+" ("+str(int(100*nbrOfPure/nbrOfClusters))+"%)\n")
+    if nbrOfClusters > 0:
+        sys.stderr.write("Found "+str(nbrOfClusters)+ " clusters; pure: "+str(nbrOfPure)+" ("+str(int(100*nbrOfPure/nbrOfClusters))+"%)\n")
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

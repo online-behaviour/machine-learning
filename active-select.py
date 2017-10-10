@@ -50,7 +50,7 @@ randomWithReplacement = False
 simFile = ""
 data = []
 
-try: options = getopt.getopt(sys.argv,"acd:eh:lmp:rRs:Stxwz:",[])
+try: options = getopt.getopt(sys.argv,"acd:Deh:lmp:rRs:Stxwz:",[])
 except: sys.exit(USAGE)
 nbrOfMethods = 0
 for option in options[0]:
@@ -316,6 +316,8 @@ for line in selectResults["selected"]:
     print("%s" % (line["data"]))
 if outputAll:
     for line in selectResults["rest"]:
-        if printScore: print("%0.3f" % (line["score"]),end=" ")
+        if printScore:
+            if not "score" in line: line["score"] = 0.0
+            print("%0.3f" % (line["score"]),end=" ")
         print("%s" % (line["data"]))
 
