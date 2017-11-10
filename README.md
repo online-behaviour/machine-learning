@@ -9,7 +9,19 @@ Netherlands eScience Center. This project also has a
 software repository regarding [finding
 journalists](https://github.com/online-behaviour/find-journalists)
 
-## getTweetsUser.py
+The software consist of a collection of Python scripts.
+These can be divided in three groups:
+
+1. tweet-fetching scripts
+1. scripts related to the IEEE paper (Auckland)
+1. scripts related to the Casablanca paper
+
+There are also several unrelated scripts, which have been
+left undocumented.
+
+## Tweet-fetching scripts
+
+### getTweetsUser.py
 
 The Python script getTweetsUser.py can be used for obtaining
 tweets from certain users. Run like:
@@ -54,7 +66,7 @@ https://apps.twitter.com , see
 https://www.slickremix.com/docs/how-to-get-api-keys-and-tokens-for-twitter/
 for instructions
 
-## getTweetText.py
+### getTweetText.py
 
 The Python script getTweetText.py can be used for extracting
 the tweets from the JSON output of getTweetsUser.py:
@@ -63,7 +75,73 @@ the tweets from the JSON output of getTweetsUser.py:
 ./getTweetText.py < getTweetsUser.py.out > file
 ```
 
-## (other scripts need to be documented ...)
+## Scripts related to the IEEE paper (Aukland)
+
+> Erik Tjong Kim Sang, Herbert Kruitbosch, Marcel Broersma and
+> Marc Esteve del Valle, Determining the function of political
+> tweets. In: Proceedings of the 13th IEEE International
+> Conference on eScience (eScience 2017), IEEE, Auckland, New
+> Zealand, 2017, pages 438-439, ISBN 978-1-5386-2686-3,
+> doi:10.1109/eScience.2017.60. 
+> ([PDF](https://ifarm.nl/erikt/papers/2017-escience.pdf),
+> [bibtex](https://ifarm.nl/erikt/papers/2017-escience.txt)]
+
+First, the data needs to be converted to the format required
+by the machine learner fasttext. We use tokenized text
+preceded by the class label, for example *__label__1 this is
+a tweet !*:
+
+```
+for FILE in test train
+do
+   ./expandReplies.py -t dutch-2012.$FILE.csv -r EMPTY |\
+      cut -d' ' -f1,4- | sed 's/ RAWTEXT /*$/' > dutch-2012.$FILE.txt
+```
+
+Note that the data files with tweets (dutch-2012.*) are 
+unavailable.
+
+Next, fasttext can be applied to the data:
+
+```
+fasttext supervised -input dutch-2012.train.txt -output MODEL \
+   -dim 5 -minCount 300
+fasttext predict MODEL.bin dutch-2012.test.txt |\
+   paste -d ' ' - dutch-2012.test.txt | cut -d' ' -f1,2 |
+      ./eval.py | head -1 | rev | sed 's/^ *//' | cut -d' ' -f1 | rev
+```
+
+For most of the experiments mentioned in Table II of the
+paper, these two command can be reused with a different
+training file. Only the language modeling experiments
+require an extra step, for creating the language models:
+
+```
+fasttext skipgram -input EXTRADATA -output VECTORS -dim 5 \
+   -minCount 300
+fasttext supervised -input dutch-2012.train.txt -output MODEL \
+   -dim 5 -minCount 300 -pretrainedVectors VECTORS.vec
+fasttext predict MODEL.bin dutch-2012.test.txt |\
+   paste -d ' ' - dutch-2012.test.txt | cut -d' ' -f1,2 |
+      ./eval.py | head -1 | rev | sed 's/^ *//' | cut -d' '
+-f1 | rev
+```
+
+We always remove the labels from the EXTRADATA files.
+
+## Scripts related to the Casablanca paper
+
+> Erik Tjong Kim Sang, Marc Esteve del Valle, Herbert Kruitbosch,
+> and Marcel Broersma, Active Learning for Classifying Political 
+> Tweets. In: Proceedings of the International Conference on
+> Natural Language, Signal and Speech Processing (ICNLSSP),
+> Casablanca, Morocco, 2017.
+
+The experiments related to Figure 1 and Table 1 of the
+paper, were performed with the bash script `run.sh`.
+
+After annotating a file for active learning, the next data
+file was generated with the bash script `run-make-batch 
 
 ## Contact
 
