@@ -1,4 +1,5 @@
 # Machine Learning in project Online Behaviour
+[![DOI](https://zenodo.org/badge/87834727.svg)](https://zenodo.org/badge/latestdoi/87834727)
 
 This directory contains the software developed in the main
 Machine Learning part of the project [Automated Analysis of
