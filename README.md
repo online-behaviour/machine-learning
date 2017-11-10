@@ -7,7 +7,7 @@ Media](https://www.esciencecenter.nl/project/automated-analysis-of-online-behavi
 a cooperation of the University of Groningen and the
 Netherlands eScience Center. This project also has a
 software repository regarding [finding
-journalists](https://github.com/online-behaviour/find-journalists)
+journalists](https://github.com/online-behaviour/find-journalists).
 
 The software consist of a collection of Python scripts.
 These can be divided in three groups:
@@ -75,7 +75,7 @@ the tweets from the JSON output of getTweetsUser.py:
 ./getTweetText.py < getTweetsUser.py.out > file
 ```
 
-## Scripts related to the IEEE paper (Aukland)
+## Scripts related to the IEEE paper (Auckland)
 
 > Erik Tjong Kim Sang, Herbert Kruitbosch, Marcel Broersma and
 > Marc Esteve del Valle, Determining the function of political
@@ -87,21 +87,23 @@ the tweets from the JSON output of getTweetsUser.py:
 > [bibtex](https://ifarm.nl/erikt/papers/2017-escience.txt)]
 
 First, the data needs to be converted to the format required
-by the machine learner fasttext. We use tokenized text
-preceded by the class label, for example *__label__1 this is
-a tweet !*:
+by the machine learner [fasttext](https://github.com/facebookresearch/fastText).
+We use tokenized text preceded by the class label, for 
+example *__label__1 this is a tweet !*:
 
 ```
 for FILE in test train
 do
    ./expandReplies.py -t dutch-2012.$FILE.csv -r EMPTY |\
       cut -d' ' -f1,4- | sed 's/ RAWTEXT /*$/' > dutch-2012.$FILE.txt
+done
 ```
 
-Note that the data files with tweets (dutch-2012.*) are 
-unavailable.
+Note that the data files with annotated tweets 
+(dutch-2012.*) are unavailable.
 
-Next, fasttext can be applied to the data:
+Next, [fasttext](https://github.com/facebookresearch/fastText)
+can be applied to the data:
 
 ```
 fasttext supervised -input dutch-2012.train.txt -output MODEL \
@@ -112,7 +114,7 @@ fasttext predict MODEL.bin dutch-2012.test.txt |\
 ```
 
 For most of the experiments mentioned in Table II of the
-paper, these two command can be reused with a different
+paper, these two commands can be reused with a different
 training file. Only the language modeling experiments
 require an extra step, for creating the language models:
 
@@ -122,9 +124,8 @@ fasttext skipgram -input EXTRADATA -output VECTORS -dim 5 \
 fasttext supervised -input dutch-2012.train.txt -output MODEL \
    -dim 5 -minCount 300 -pretrainedVectors VECTORS.vec
 fasttext predict MODEL.bin dutch-2012.test.txt |\
-   paste -d ' ' - dutch-2012.test.txt | cut -d' ' -f1,2 |
-      ./eval.py | head -1 | rev | sed 's/^ *//' | cut -d' '
--f1 | rev
+   paste -d ' ' - dutch-2012.test.txt | cut -d' ' -f1,2 |\
+   ./eval.py | head -1 | rev | sed 's/^ *//' | cut -d' ' -f1 | rev
 ```
 
 We always remove the labels from the EXTRADATA files.
@@ -141,7 +142,7 @@ The experiments related to Figure 1 and Table 1 of the
 paper, were performed with the bash script `run.sh`.
 
 After annotating a file for active learning, the next data
-file was generated with the bash script `run-make-batch 
+file was generated with the bash script `run-make-batch`.
 
 ## Contact
 
