@@ -14,6 +14,13 @@ import sys
 
 COMMAND = sys.argv.pop(0)
 USAGE = "usage: "+COMMAND+"-t tweet-file -r replies-file [-s skip-file]"
+EMPTY = ""
+IDCOL = 0
+USERNAMECOL = 2
+TEXTCOL = 4
+CLASSCOL = 9
+REPLYTOIDCOL = 1
+HEADING = False
 
 def tokenize(text,keepUpperCase,keepMailUserHttp):
     tokenizedText = []   # list of lists of tokens per tweet
@@ -68,17 +75,17 @@ def readReplies(fileName,idCol,replytoidCol,textCol):
     return(replies)
 
 def main(argv):
-    tweetFile = ""
-    repliesFile = ""
-    skipFile = ""
-    idCol = 0
-    usernameCol = 2
-    textCol = 4
-    classCol = 9
-    replytoidCol = 1
-    heading = False
+    tweetFile = EMPTY
+    repliesFile = EMPTY
+    skipFile = EMPTY
+    idCol = IDCOL
+    usernameCol = USERNAMECOL
+    textCol = TEXTCOL
+    classCol = CLASSCOL
+    replytoidCol = REPLYTOIDCOL
+    heading = HEADING
     try: options = getopt.getopt(sys.argv,"c:hi:r:s:t:T:u:",[])
-    except: sys.exit(usage)
+    except: sys.exit(USAGE)
     for option in options[0]:
         if option[0] == "-c": classCol = int(option[1])-1
         elif option[0] == "-h": heading = True
