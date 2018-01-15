@@ -1,4 +1,4 @@
-#!/usr/bin/python -W all
+#!/usr/bin/python3 -W all
 """
     getTweetText.py: extract tweet text from json file
     usage: getTweetText.py < file
@@ -30,13 +30,13 @@ with sys.stdout as csvfile:
         if not "in_reply_to_status_id_str" in jsonLine: 
             sys.exit(COMMAND+" missing in_reply_to_status_id_str field")
         # print the text in csv format
-        thisId = jsonLine["id_str"].encode("utf-8")
+        thisId = jsonLine["id_str"]
         replyId = jsonLine["in_reply_to_status_id_str"]
         if replyId == None and "retweeted_status" in jsonLine and \
            "in_reply_to_status_id_str" in jsonLine["retweeted_status"]:
             replyId = jsonLine["retweeted_status"]["in_reply_to_status_id_str"]
-        screenName = jsonLine["user"]["screen_name"].encode("utf-8")
-        text = jsonLine["text"].encode("utf-8")
+        screenName = jsonLine["user"]["screen_name"]
+        text = jsonLine["text"]
         text = patternNewline.sub(" ",text)
         outFile.writerow([thisId,replyId,screenName,text])
     csvfile.close()
