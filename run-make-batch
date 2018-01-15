@@ -40,11 +40,18 @@ cd $FASTTEXTDIR
 ./run-select $ID
 
 ebackup run-selected-a.0$ID
+<<<<<<< HEAD
+head -110 run-selected-a.0$ID | cut -d' ' -f2- > $PYTHONDIR/active-0$ID
+NEXTID=$(($ID+0))
+head -$NEXTID${NEXTID}0 TRAIN.random | tail -110 >> $PYTHONDIR/active-0$ID
+cat TRAIN ACTIVE-?? > TRAIN+ACTIVE
+=======
 TOTALBATCHSIZE=$(($FACTOR*$BATCHSIZE))
 head -$TOTALBATCHSIZE run-selected-a.0$ID | cut -d' ' -f2- > $PYTHONDIR/active-0$ID
 NEXTID=$(($ID+0))
 head -$NEXTID${NEXTID}0 $TRAINRANDOM | tail -$BATCHSIZE >> $PYTHONDIR/active-0$ID
 cat $TRAIN ACTIVE-?? > TRAIN+ACTIVE
+>>>>>>> fd7ce23564b60f50eed271e890f97b6ab103dcb2
 wc TRAIN+ACTIVE
 ../fasttext supervised -input TRAIN+ACTIVE -output $TMPFILE -dim $DIM \
    -minCount $MINCOUNT -pretrainedVectors $VECTORS > /dev/null 2>/dev/null
