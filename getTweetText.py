@@ -27,6 +27,8 @@ with sys.stdout as csvfile:
         if not "user" in jsonLine: sys.exit(COMMAND+" missing user field")
         if not "screen_name" in jsonLine["user"]:
             sys.exit(COMMAND+" missing screen_name field")
+        if not "created_at" in jsonLine["user"]:
+            sys.exit(COMMAND+" missing created_at field")
         if not "in_reply_to_status_id_str" in jsonLine: 
             sys.exit(COMMAND+" missing in_reply_to_status_id_str field")
         # print the text in csv format
@@ -36,7 +38,8 @@ with sys.stdout as csvfile:
            "in_reply_to_status_id_str" in jsonLine["retweeted_status"]:
             replyId = jsonLine["retweeted_status"]["in_reply_to_status_id_str"]
         screenName = jsonLine["user"]["screen_name"]
+        date = jsonLine["created_at"]
         text = jsonLine["text"]
         text = patternNewline.sub(" ",text)
-        outFile.writerow([thisId,replyId,screenName,text])
+        outFile.writerow([thisId,replyId,date,screenName,text])
     csvfile.close()
