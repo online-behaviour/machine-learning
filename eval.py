@@ -1,4 +1,4 @@
-#!/usr/bin/python -W all
+#!/usr/bin/python3 -W all
 # eval: compute precision and recall for classifier output
 # usage: eval < file
 # note: expects gold tag and guessed tag as final two tokens on line
@@ -42,7 +42,7 @@ for line in sys.stdin:
     guessed[ALL] += 1
 
 # show results
-for tag in sorted(gold.iterkeys()):
+for tag in sorted(gold):
     if not tag in correct: correct[tag] = 0.0
     if not tag in guessed: guessed[tag] = 0.0
     if guessed[tag] > 0.0: precision = float(correct[tag])/float(guessed[tag])
@@ -52,6 +52,6 @@ for tag in sorted(gold.iterkeys()):
     if precision > 0.0 and recall > 0.0: 
         f1 = 2*precision*recall/(precision+recall)
     else: f1 = 0.0
-    print "%5d %5.1f %5.1f %5.1f %s" % (gold[tag],100*precision,100*recall,100*f1,tag)
+    print("{0:5d} {1:5.1f} {2:5.1f} {3:5.1f} {4}".format(gold[tag],100*precision,100*recall,100*f1,tag))
 
 sys.exit()
