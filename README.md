@@ -1,4 +1,4 @@
-# Machine Learning in project Online Behaviour
+# Hercules: Tweet Retrieval and Machine Learning
 [![DOI](https://zenodo.org/badge/87834727.svg)](https://zenodo.org/badge/latestdoi/87834727)
 
 This directory contains the software developed in the main
