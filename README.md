@@ -1,5 +1,4 @@
 # Hercules: Tweet Retrieval and Machine Learning
-[![DOI](https://zenodo.org/badge/87834727.svg)](https://zenodo.org/badge/latestdoi/87834727)
 
 This directory contains the software developed in the main
 Machine Learning part of the project [Automated Analysis of
@@ -149,3 +148,56 @@ file was generated with the bash script `run-make-batch`.
 
 Erik Tjong Kim Sang, e.tjongkimsang(at)esciencecenter.nl
 
+# Information added by python template
+
+## Badges
+
+(Customize these badges with your own links, and check https://shields.io/ or https://badgen.net/ to see which other badges are available.)
+
+| fair-software.eu recommendations | |
+| :-- | :--  |
+| (1/5) code repository              | [![github repo badge](https://img.shields.io/badge/github-repo-000.svg?logo=github&labelColor=gray&color=blue)](https://github.com/online-behaviour/machine-learning) |
+| (2/5) license                      | [![github license badge](https://img.shields.io/github/license/online-behaviour/machine-learning)](https://github.com/online-behaviour/machine-learning) |
+| (3/5) community registry           | [![RSD](https://img.shields.io/badge/rsd-machine-learning-00a3e3.svg)](https://www.research-software.nl/software/machine-learning) |
+| (4/5) citation                     | [![DOI](https://zenodo.org/badge/87834727.svg)](https://zenodo.org/badge/latestdoi/87834727) |
+| (5/5) checklist                    |  |
+| howfairis                            | [![fair-software badge](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8B-yellow)](https://fair-software.eu) |
+| **Other best practices**           | &nbsp; |
+| Static analysis              | [![workflow scq badge](https://sonarcloud.io/api/project_badges/measure?project=online-behaviour_machine-learning&metric=alert_status)](https://sonarcloud.io/dashboard?id=online-behaviour_machine-learning) |
+| Coverage              | [![workflow scc badge](https://sonarcloud.io/api/project_badges/measure?project=online-behaviour_machine-learning&metric=coverage)](https://sonarcloud.io/dashboard?id=online-behaviour_machine-learning) |
+| **GitHub Actions**                 | &nbsp; |
+| Build                              | [![build](https://github.com/online-behaviour/machine-learning/actions/workflows/build.yml/badge.svg)](https://github.com/online-behaviour/machine-learning/actions/workflows/build.yml) |
+|  Metadata consistency              | [![cffconvert](https://github.com/online-behaviour/machine-learning/actions/workflows/cffconvert.yml/badge.svg)](https://github.com/online-behaviour/machine-learning/actions/workflows/cffconvert.yml) |
+| Lint                               | [![lint](https://github.com/online-behaviour/machine-learning/actions/workflows/lint.yml/badge.svg)](https://github.com/online-behaviour/machine-learning/actions/workflows/lint.yml) |
+| Publish                            | [![publish](https://github.com/online-behaviour/machine-learning/actions/workflows/publish.yml/badge.svg)](https://github.com/online-behaviour/machine-learning/actions/workflows/publish.yml) |
+| SonarCloud                         | [![sonarcloud](https://github.com/online-behaviour/machine-learning/actions/workflows/sonarcloud.yml/badge.svg)](https://github.com/online-behaviour/machine-learning/actions/workflows/sonarcloud.yml) |
+| MarkDown link checker              | [![markdown-link-check](https://github.com/online-behaviour/machine-learning/actions/workflows/markdown-link-check.yml/badge.svg)](https://github.com/online-behaviour/machine-learning/actions/workflows/markdown-link-check.yml) |
+
+## How to use machine_learning
+
+
+
+The project setup is documented in [project_setup.md](project_setup.md). Feel free to remove this document (and/or the link to this document) if you don't need it.
+
+## Installation
+
+To install machine_learning from GitHub repository, do:
+
+```console
+git clone https://github.com/online-behaviour/machine-learning.git
+cd machine-learning
+python3 -m pip install .
+```
+
+## Documentation
+
+Include a link to your project's full documentation here.
+
+## Contributing
+
+If you want to contribute to the development of machine-learning,
+have a look at the [contribution guidelines](CONTRIBUTING.md).
+
+## Credits
+
+This package was created with [Cookiecutter](https://github.com/audreyr/cookiecutter) and the [NLeSC/python-template](https://github.com/NLeSC/python-template).
