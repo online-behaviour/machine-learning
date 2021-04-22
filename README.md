@@ -158,7 +158,7 @@ Erik Tjong Kim Sang, e.tjongkimsang(at)esciencecenter.nl
 | :-- | :--  |
 | (1/5) code repository              | [![github repo badge](https://img.shields.io/badge/github-repo-000.svg?logo=github&labelColor=gray&color=blue)](https://github.com/online-behaviour/machine-learning) |
 | (2/5) license                      | [![github license badge](https://img.shields.io/github/license/online-behaviour/machine-learning)](https://github.com/online-behaviour/machine-learning) |
-| (3/5) community registry           | [![RSD](https://img.shields.io/badge/rsd-machine-learning-00a3e3.svg)](https://www.research-software.nl/software/machine-learning) |
+| (3/5) community registry           | [![Research Software Directory](https://img.shields.io/badge/rsd-Research%20Software%20Directory-00a3e3.svg)](https://www.research-software.nl/software/online-behaviour-machine-learning) |
 | (4/5) citation                     | [![DOI](https://zenodo.org/badge/87834727.svg)](https://zenodo.org/badge/latestdoi/87834727) |
 | (5/5) checklist                    |  |
 | howfairis                            | [![fair-software badge](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8B-yellow)](https://fair-software.eu) |
