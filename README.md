@@ -159,7 +159,7 @@ Erik Tjong Kim Sang, e.tjongkimsang(at)esciencecenter.nl
 | (3/5) community registry           | [![Research Software Directory](https://img.shields.io/badge/rsd-Research%20Software%20Directory-00a3e3.svg)](https://www.research-software.nl/software/online-behaviour-machine-learning) |
 | (4/5) citation                     | [![DOI](https://zenodo.org/badge/87834727.svg)](https://zenodo.org/badge/latestdoi/87834727) |
 | (5/5) checklist                    | [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/4837/badge)](https://bestpractices.coreinfrastructure.org/projects/4837) |
-| howfairis                            | [![fair-software badge](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F-green) |
+| howfairis                            | [![fair-software badge](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F-green)](https://fair-software.eu) |
 | **Other best practices**           | &nbsp; |
 | Static analysis              | [![workflow scq badge](https://sonarcloud.io/api/project_badges/measure?project=online-behaviour_machine-learning&metric=alert_status)](https://sonarcloud.io/dashboard?id=online-behaviour_machine-learning) |
 | Coverage              | [![workflow scc badge](https://sonarcloud.io/api/project_badges/measure?project=online-behaviour_machine-learning&metric=coverage)](https://sonarcloud.io/dashboard?id=online-behaviour_machine-learning) |
